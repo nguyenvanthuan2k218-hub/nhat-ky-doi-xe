@@ -257,7 +257,7 @@ html:not(.role-quanly) [data-del],html:not(.role-quanly) [data-mdel],html:not(.r
 html.role-ketoan .wform{display:none!important}
 html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
 html.role-taixe #tab-fuel>section:not(.ledger),html.role-taixe #tab-fuel>details,html.role-taixe #tab-fuel>.formula,html.role-taixe .veh-res,html.role-taixe .f-rate,html.role-taixe .f-actual{display:none!important}
-html:not(.role-taixe) .km-save,html:not(.role-taixe) .tx-note{display:none!important}
+html:not(.role-taixe):not(.role-quanly) .km-save,html:not(.role-taixe) .tx-note{display:none!important}
 .sel-col{width:42px;text-align:center}
 .sel-col input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
 html:not(.role-quanly):not(.role-ketoan) .sel-col{display:none!important}
@@ -1413,7 +1413,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         fld('km','Số km trong tháng','km','0')+
         '<div class="fld f-actual"><span class="lab">Lít thực tế (từ sổ đổ dầu)</span><span class="inp ro"><b class="roval" id="act-'+id+'">—</b><em>lít</em></span></div>'+
       '</div>'+
-      '<div class="km-save"><button class="btn small primary" type="button" data-kmsave="'+id+'">Lưu số km</button><span class="km-note" id="kn-'+id+'"></span></div>'+
+      '<div class="km-save"><button class="btn small primary" type="button" data-kmsave="'+id+'">'+(me&&me.role==='quanly'?'Lưu':'Lưu số km')+'</button><span class="km-note" id="kn-'+id+'"></span></div>'+
       '<div class="veh-res">'+
         '<div class="res"><span class="lab">Lít theo định mức</span><span class="rv empty" id="rq-'+id+'">—</span></div>'+
         '<div class="res"><span class="lab">Thực tế L/100km</span><span class="rv empty" id="rr-'+id+'">—</span></div>'+
@@ -1726,6 +1726,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!ok) vehicles=DEFAULT_PLATES.map(function(p){return {id:p,driver:''};});
   }
 
+  function noteQ(id,txt,err){
+    if(!me||me.role!=='quanly') return;
+    var n=$('kn-'+String(id).split('_')[1]); if(!n) return;
+    n.textContent=txt;n.className='km-note'+(err?' err':'');
+  }
+  function hhmm(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});}
   async function writeRec(id,data){
     await ready;
     setStatus('saving');
@@ -1742,7 +1748,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }else persistLocal();
       if(unsaved.get(id)===data) unsaved.delete(id);
       setStatus('saved');
-    }catch(e){setStatus('error',e);}
+      if(!unsaved.has(id)) noteQ(id,'Đã lưu lúc '+hhmm());
+    }catch(e){setStatus('error',e);noteQ(id,'Chưa lưu được. Hãy kiểm tra mạng rồi bấm Lưu lại.',true);}
   }
   function commit(id){
     timers.delete(id);
@@ -1818,6 +1825,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var empty=FIELDS.every(function(f){return data[f]==null;});
     if(empty) delete rec[key]; else rec[key]=data;
     unsaved.set(key,data);
+    noteQ(key,'Chưa lưu, đang tự lưu…');
     schedule(key);
     renderRows();renderStrip();renderBars();renderFleet();renderMatrix();renderHistory();renderFillBtn();
   }
@@ -1871,7 +1879,19 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var kmConfirm=null;
   rowsEl.addEventListener('click',async function(e){
     var b=e.target.closest&&e.target.closest('[data-kmsave]');
-    if(!b||!me||me.role!=='taixe') return;
+    if(!b||!me) return;
+    if(me.role==='quanly'){
+      var qid=b.getAttribute('data-kmsave'), qkey=docId(month,qid), qn=$('kn-'+qid);
+      if($('w-km-'+qid).classList.contains('bad')||$('w-rate-'+qid).classList.contains('bad')){qn.textContent='Có ô chưa phải số hợp lệ, hãy sửa rồi bấm Lưu.';qn.className='km-note err';return;}
+      b.disabled=true;qn.textContent='Đang lưu…';qn.className='km-note';
+      if(timers.has(qkey)){clearTimeout(timers.get(qkey));commit(qkey);}
+      var qch=chains.get(qkey); if(qch) await qch;
+      b.disabled=false;
+      if($('status').dataset.s==='error'||unsaved.has(qkey)){qn.textContent='Chưa lưu được. Hãy kiểm tra mạng rồi bấm Lưu lại.';qn.className='km-note err';}
+      else{qn.textContent='Đã lưu lúc '+hhmm();qn.className='km-note';}
+      return;
+    }
+    if(me.role!=='taixe') return;
     var id=b.getAttribute('data-kmsave'), note=$('kn-'+id), r=parseNum($('km-'+id).value);
     function say(t,err,keep){note.textContent=t;note.className='km-note'+(err?' err':'');if(keep) note.dataset.keep='1'; else delete note.dataset.keep;}
     if(r.empty||r.bad||!(r.v>0)){say('Nhập số km hợp lệ, ví dụ 757.',true);return;}
@@ -1894,6 +1914,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     b.disabled=false;refreshInputs(true);renderAll();
   });
 
+  window.addEventListener('beforeunload',function(e){
+    if(unsaved.size||timers.size||chains.size||cfgPending||cfgTimer){
+      try{flushAll();}catch(_){}
+      e.preventDefault();e.returnValue='';
+    }
+  });
   function goMonth(m){
     flushAll();
     if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
@@ -3420,6 +3446,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     h.classList.remove('role-quanly','role-ketoan','role-taixe');
     h.classList.add('role-'+me.role);
     $('rows').inert=!(can('edit')||me.role==='taixe');lockTaixe();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-kmsave]'),function(bn){bn.textContent=me.role==='quanly'?'Lưu':'Lưu số km';});
     var rb=$('rf-by'); if(rb){rb.value=me.name||me.id;rb.readOnly=!can('edit');}
     $('who').hidden=false;
     $('who-txt').innerHTML='Xin chào, <b>'+esc(me.name)+'</b> · '+ROLE_TXT[me.role];
