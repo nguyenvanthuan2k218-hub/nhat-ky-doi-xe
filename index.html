@@ -258,6 +258,9 @@ html.role-ketoan .wform{display:none!important}
 html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
 html.role-taixe #tab-fuel>section:not(.ledger),html.role-taixe #tab-fuel>details,html.role-taixe #tab-fuel>.formula,html.role-taixe .veh-res,html.role-taixe .f-rate,html.role-taixe .f-actual{display:none!important}
 html:not(.role-taixe) .km-save,html:not(.role-taixe) .tx-note{display:none!important}
+.sel-col{width:42px;text-align:center}
+.sel-col input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+html:not(.role-quanly):not(.role-ketoan) .sel-col{display:none!important}
 .inp.name input{font-family:inherit;text-align:left;font-weight:600}
 .inp.ro{background:var(--accent-soft);border-color:transparent}
 .roval{flex:1;text-align:right;font-family:var(--f-mono);font-size:16px;font-weight:600;color:var(--ink);padding:9px 8px 9px 10px}
@@ -638,7 +641,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
       <div class="scroll">
         <table class="trips" style="min-width:680px">
-          <thead><tr><th>Ngày</th><th>Biển số</th><th>Người đổ</th><th>Số lít</th><th>Thành tiền</th><th>Hình ảnh, video</th><th></th></tr></thead>
+          <thead><tr><th class="sel-col"><input type="checkbox" id="rf-all" aria-label="Chọn tất cả các lần đổ đang hiện" title="Chọn tất cả"></th><th>Ngày</th><th>Biển số</th><th>Người đổ</th><th>Số lít</th><th>Thành tiền</th><th>Hình ảnh, video</th><th></th></tr></thead>
           <tbody id="rf-body"></tbody>
         </table>
       </div>
@@ -2466,6 +2469,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var v=Number(t);
     return v>0?v:null;
   }
+  var rfSel=new Set();
+  function rfSelCount(){var n=0;rfSel.forEach(function(id){var x=refuel[id];if(x&&monthOfMs(x.date)===month) n++;else if(!x) rfSel.delete(id);});return n;}
+  function rfSelIds(){
+    var o={},n=0;rfSel.forEach(function(id){var x=refuel[id];if(x&&monthOfMs(x.date)===month){o[id]=1;n++;}});
+    return n?o:null;
+  }
+  function updateSelUi(visible){
+    var n=rfSelCount();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-xl=refuel]'),function(b){if(!b.disabled) b.textContent=n?('Xuất Excel '+n+' lần đã chọn'):'Xuất báo cáo Excel';});
+    Array.prototype.forEach.call(document.querySelectorAll('[data-zip=refuel]'),function(b){if(!b.disabled) b.textContent=n?('Tải hình ảnh '+n+' lần đã chọn (ZIP)'):'Tải hình ảnh, video (ZIP)';});
+    var all=$('rf-all'); if(!all) return;
+    var v=visible||[];var c=0;v.forEach(function(x){if(rfSel.has(x.id)) c++;});
+    all.checked=v.length>0&&c===v.length;all.indeterminate=c>0&&c<v.length;
+  }
+  var rfVisible=[];
   function renderRefuel(){
     var key=vehicles.map(function(v){return v.id;}).join(',');
     var sel=$('rf-plate'), fl=$('rf-filter');
@@ -2482,13 +2500,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var f=fl.value;
     var list=inMonth.filter(function(x){return !f||x.plate===f;}).sort(function(a,b){return b.date-a.date||b.at-a.at;});
     var L=0,C=0,anyC=false;list.forEach(function(x){L+=x.liters;if(x.cost!=null){C+=x.cost;anyC=true;}});
+    rfVisible=list;
     $('rf-title').textContent='Các lần đổ dầu '+mLabel(month).toLowerCase();
     $('rf-count').textContent=list.length+' lần'+(list.length?', '+nf1.format(L)+' lít':'')+(anyC?', '+moneyTxt(C):'');
     $('rf-body').innerHTML=list.length?list.map(function(x){
       var asking=refuelConfirm===x.id;
-      return '<tr><td class="num">'+dmyFull(x.date)+'</td><td><span class="plate-sm">'+esc(fmtPlate(x.plate))+'</span></td><td>'+(x.by?esc(x.by):'—')+'</td><td class="num">'+nf1.format(x.liters)+' lít</td><td class="num">'+(x.cost!=null?moneyTxt(x.cost):'—')+'</td><td>'+mediaCell(x)+'</td>'+
+      return '<tr><td class="sel-col"><input type="checkbox" data-rsel="'+esc(x.id)+'"'+(rfSel.has(x.id)?' checked':'')+' aria-label="Chọn lần đổ này để xuất báo cáo"></td><td class="num">'+dmyFull(x.date)+'</td><td><span class="plate-sm">'+esc(fmtPlate(x.plate))+'</span></td><td>'+(x.by?esc(x.by):'—')+'</td><td class="num">'+nf1.format(x.liters)+' lít</td><td class="num">'+(x.cost!=null?moneyTxt(x.cost):'—')+'</td><td>'+mediaCell(x)+'</td>'+
         '<td><button class="mbtn" type="button" data-rdel="'+esc(x.id)+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
-    }).join(''):'<tr><td class="empty" colspan="7">Chưa có lần đổ dầu nào trong '+mLabel(month).toLowerCase()+'. Ghi lần đầu ở phía trên.</td></tr>';
+    }).join(''):'<tr><td class="empty" colspan="8">Chưa có lần đổ dầu nào trong '+mLabel(month).toLowerCase()+'. Ghi lần đầu ở phía trên.</td></tr>';
     $('rf-sum-title').textContent='Tổng theo xe '+mLabel(month).toLowerCase();
     var tl=0,tc=0,tn=0,tAnyC=false;
     var rows=vehicles.map(function(v){
@@ -2499,6 +2518,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }).join('');
     $('rf-sum-body').innerHTML=rows+'<tr class="tot"><td>Cả đội</td><td class="num">'+tn+'</td><td class="num">'+(tn?nf1.format(tl)+' lít':'—')+'</td><td class="num">'+(tAnyC?moneyTxt(tc):'—')+'</td></tr>';
     loadThumbs();
+    updateSelUi(rfVisible);
   }
   async function writeRefuel(x){
     await ready;
@@ -2672,7 +2692,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function deleteRefuel(id){
     if(!can('del')) return;
     var x=refuel[id]; if(!x) return;
-    delete refuel[id];refuelPending.set(id,null);
+    delete refuel[id];rfSel.delete(id);refuelPending.set(id,null);
     renderRefuel();renderHomeIf();
     removeRefuelRemote(x).then(function(){
       if(refuelPending.has(id)||refuel[id]) return;
@@ -2699,6 +2719,17 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('lb-close').addEventListener('click',function(){$('lb').close();});
   $('lb').addEventListener('close',function(){$('lb-body').innerHTML='';});
   $('lb').addEventListener('click',function(e){if(e.target===$('lb')) $('lb').close();});
+  $('rf-body').addEventListener('change',function(e){
+    var t=e.target;if(!t||!t.getAttribute||!t.getAttribute('data-rsel')) return;
+    var id=t.getAttribute('data-rsel');
+    if(t.checked) rfSel.add(id); else rfSel.delete(id);
+    updateSelUi(rfVisible);
+  });
+  $('rf-all').addEventListener('change',function(){
+    var on=this.checked;
+    rfVisible.forEach(function(x){if(on) rfSel.add(x.id); else rfSel.delete(x.id);});
+    renderRefuel();
+  });
   $('rf-body').addEventListener('click',function(e){
     var b=e.target.closest&&e.target.closest('[data-rid]'); if(!b) return;
     openMedia(b.getAttribute('data-rid'),Number(b.getAttribute('data-mi')));
@@ -3010,7 +3041,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function xFill(c){return {type:'pattern',pattern:'solid',fgColor:{argb:c}};}
   function colLetter(i){return String.fromCharCode(65+i);}
   function sumOf(rows,ci){var t=0;rows.forEach(function(r){if(typeof r[ci]==='number') t+=r[ci];});return t;}
-  function makeXlsx(P,A,only){
+  function makeXlsx(P,A,only,ids){
     function want(k){return !only||only.indexOf(k)>=0;}
     var T=A.T, hasFuel=P.type!=='week', wb=new ExcelJS.Workbook();
     wb.creator='Nhật ký đội xe Phúc An';wb.created=new Date();
@@ -3019,7 +3050,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     function inP(ms){return ms>=P.from&&ms<P.to;}
     var nn=new Date(nowNaive());
     var stamp='Xuất lúc '+p2(nn.getUTCHours())+':'+p2(nn.getUTCMinutes())+' ngày '+dmyFull(nn.getTime())+(me?' · '+me.name:'');
-    var sub=P.label+' ('+P.range+') · '+stamp;
+    var sub=P.label+' ('+P.range+') · '+stamp+(ids?' · Chỉ '+Object.keys(ids).length+' lần đổ dầu đã chọn':'');
     function sheet(name,title,cols,rows,o){
       o=o||{};
       var n=cols.length;
@@ -3079,7 +3110,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return ws;
     }
     var L1='#,##0.0', LF='#,##0.0;-#,##0.0;0.0', MONEY='#,##0" đ"', PCT='+0.0%;-0.0%;0.0%';
-    var refuels=Object.keys(refuel).map(function(k){return refuel[k];}).filter(function(x){return inP(x.date);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
+    var refuels=Object.keys(refuel).map(function(k){return refuel[k];}).filter(function(x){return inP(x.date)&&(!ids||ids[x.id]);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
     var tripsL=Object.keys(trips).map(function(k){return trips[k];}).filter(function(t){return inP(t.start);}).sort(function(a,b){return a.start-b.start||a.at-b.at;});
     var maintL=Object.keys(maint).map(function(k){return maint[k];}).filter(function(m){return inP(m.date);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
     var rfBy={},mtBy={};
@@ -3174,10 +3205,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     }
   }
-  async function addImageSheets(wb,P,key){
+  async function addImageSheets(wb,P,key,ids){
     function inP(ms){return ms>=P.from&&ms<P.to;}
     function money(v){return v!=null?' · '+moneyTxt(v):'';}
-    var rfs=Object.keys(refuel).map(function(k){return refuel[k];}).filter(function(x){return inP(x.date);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
+    var rfs=Object.keys(refuel).map(function(k){return refuel[k];}).filter(function(x){return inP(x.date)&&(!ids||ids[x.id]);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
     var mts=Object.keys(maint).map(function(k){return maint[k];}).filter(function(x){return inP(x.date);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
     var n=0;(key==='sum'?rfs.concat(mts):key==='refuel'?rfs:key==='maint'?mts:[]).forEach(function(x){n+=(x.media||[]).length;});
     if(!n) return;
@@ -3195,9 +3226,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!dl||!window.JSZip||!can('exp')) return;
     var mp=month.split('-'), P=periodOf('month',Date.UTC(+mp[0],+mp[1]-1,1));
     var src=key==='refuel'?refuel:maint;
-    var recs=Object.keys(src).map(function(k){return src[k];}).filter(function(x){return x.date>=P.from&&x.date<P.to&&x.media&&x.media.length;}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
+    var zids=key==='refuel'?rfSelIds():null;
+    var recs=Object.keys(src).map(function(k){return src[k];}).filter(function(x){return x.date>=P.from&&x.date<P.to&&x.media&&x.media.length&&(!zids||zids[x.id]);}).sort(function(a,b){return a.date-b.date||a.at-b.at;});
     var total=0;recs.forEach(function(x){total+=x.media.length;});
-    if(!total){showNotice('Tháng này chưa có hình ảnh, tệp nào để tải.');setTimeout(function(){if($('notice').textContent.indexOf('chưa có hình ảnh')>=0) showNotice('');},4000);return;}
+    if(!total){showNotice(zids?'Các lần đổ đã chọn chưa có hình ảnh nào để tải.':'Tháng này chưa có hình ảnh, tệp nào để tải.');setTimeout(function(){if($('notice').textContent.indexOf('chưa có hình ảnh')>=0) showNotice('');},4000);return;}
     var old=btn.textContent;btn.disabled=true;
     try{
       var zip=new JSZip(),done=0,used={},csv=['Tên tệp;Ngày;Biển số;'+(key==='refuel'?'Số lít;Thành tiền':'Loại;Nội dung;Chi phí')];
@@ -3217,7 +3249,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       zip.file('danh-sach.csv','\ufeff'+csv.join('\r\n'));
       btn.textContent='Đang nén…';
       var out=await zip.generateAsync({type:'blob',compression:'STORE'});
-      await dl.save({filename:(key==='refuel'?'hinh-anh-do-dau':'hoa-don-sua-chua')+'-thang-'+P.label.replace(/[^0-9\/]/g,'').split('/').reverse().join('-')+'.zip',data:out});
+      await dl.save({filename:(key==='refuel'?'hinh-anh-do-dau':'hoa-don-sua-chua')+(zids?'-da-chon':'')+'-thang-'+P.label.replace(/[^0-9\/]/g,'').split('/').reverse().join('-')+'.zip',data:out});
     }catch(e){
       if(!(e&&e.code==='declined')) showNotice('Chưa tải được hình ảnh. Hãy thử lại.');
     }
@@ -3225,8 +3257,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   Array.prototype.forEach.call(document.querySelectorAll('.zip-btn'),function(b){b.addEventListener('click',function(){exportZip(b);});});
   var XL_NAME={sum:'nhat-ky-doi-xe',fuel:'dinh-muc-dau',refuel:'so-do-dau',trips:'so-hanh-trinh',maint:'sua-chua-bao-duong'};
-  function xlsxName(P,key){
-    var d=new Date(P.from),y=d.getUTCFullYear(),base=XL_NAME[key]||'nhat-ky-doi-xe';
+  function xlsxName(P,key,sel){
+    var d=new Date(P.from),y=d.getUTCFullYear(),base=(XL_NAME[key]||'nhat-ky-doi-xe')+(sel?'-da-chon':'');
     if(P.type==='year') return base+'-nam-'+y+'.xlsx';
     if(P.type==='week'){var iw=isoWeekOf(P.from);return base+'-tuan-'+iw.y+'-'+p2(iw.w)+'.xlsx';}
     return base+'-thang-'+y+'-'+p2(d.getUTCMonth()+1)+'.xlsx';
@@ -3241,11 +3273,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(key==='sum') P=periodOf(sumType,sumAnchor==null?dayStart(nowNaive()):sumAnchor);
       else{var mp=month.split('-');P=periodOf('month',Date.UTC(+mp[0],+mp[1]-1,1));}
       var A=aggAll(P);
-      var wb=makeXlsx(P,A,key==='sum'?null:[key]);
+      var xids=key==='refuel'?rfSelIds():null;
+      var wb=makeXlsx(P,A,key==='sum'?null:[key],xids);
       btn.textContent='Đang thêm hình ảnh…';
-      await addImageSheets(wb,P,key);
+      await addImageSheets(wb,P,key,xids);
       var buf=await wb.xlsx.writeBuffer();
-      await dl.save({filename:xlsxName(P,key),data:buf});
+      await dl.save({filename:xlsxName(P,key,!!xids),data:buf});
     }catch(e){
       if(!(e&&(e.code==='declined'))) showNotice('Chưa xuất được file Excel. Hãy thử lại.');
     }
