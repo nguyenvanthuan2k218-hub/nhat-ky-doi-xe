@@ -255,7 +255,14 @@ html.locked .tabs,html.locked .tabpanel,html.locked #monthbar,html.locked #who{d
 html:not(.role-quanly) .only-q{display:none!important}
 html:not(.role-quanly) [data-del],html:not(.role-quanly) [data-mdel],html:not(.role-quanly) [data-rdel],html:not(.role-quanly) #manage,html:not(.role-quanly) #fillprev{display:none!important}
 html.role-ketoan .wform{display:none!important}
-html.role-taixe .adsun,html.role-taixe #t-fuel,html.role-taixe #t-sum,html.role-taixe [data-go=fuel],html.role-taixe [data-go=sum]{display:none!important}
+html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
+html.role-taixe #tab-fuel>section:not(.ledger),html.role-taixe #tab-fuel>details,html.role-taixe #tab-fuel>.formula,html.role-taixe .veh-res,html.role-taixe .f-rate,html.role-taixe .f-actual{display:none!important}
+html:not(.role-taixe) .km-save,html:not(.role-taixe) .tx-note{display:none!important}
+.inp.ro{background:var(--accent-soft);border-color:transparent}
+.roval{flex:1;text-align:right;font-family:var(--f-mono);font-size:16px;font-weight:600;color:var(--ink);padding:9px 8px 9px 10px}
+.km-save{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
+.km-note{font-size:13px;color:var(--muted)}.km-note.err{color:var(--warn)}
+.tx-note{margin:0 0 12px;padding:10px 12px;border-radius:8px;background:var(--accent-soft);font-size:14px;color:var(--ink)}
 html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.role-ketoan) .xl-btn,html:not(.role-quanly):not(.role-ketoan) .zip-btn,html:not(.role-quanly):not(.role-ketoan) #lb-dl{display:none!important}
 .mt-file{font-weight:800;font-size:12px;color:var(--accent)}
 .hgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
@@ -412,7 +419,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <button class="hcard" type="button" data-go="fuel">
         <span class="hc-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M3 21h12"/><path d="M7 8h4"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V9l-3-3"/></svg></span>
         <h2>Định mức dầu</h2>
-        <p class="hc-sub">Nhập km, định mức và lít thực tế của từng xe theo tháng.</p>
+        <p class="hc-sub">Tài xế nhập số km trong tháng, quản lý nhập định mức, lít thực tế tự lấy từ sổ đổ dầu.</p>
         <div class="hc-stats" id="home-fuel"></div>
         <span class="hc-go">Mở định mức dầu →</span>
       </button>
@@ -479,6 +486,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     </div>
   </details>
 
+  <p class="tx-note">Cuối tháng hoặc đầu tháng sau, nhập tổng số km mỗi xe đã chạy trong tháng. Chọn đúng tháng bằng nút &#8249; &#8250; phía trên. Số km chỉ lưu được một lần, cần sửa hãy báo quản lý.</p>
   <section class="ledger" aria-label="Nhập số liệu từng xe">
     <div id="rows"></div>
     <div class="l-foot">
@@ -486,7 +494,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <span class="status" id="status" data-s="idle" role="status">Số liệu tự lưu khi bạn nhập</span>
     </div>
   </section>
-  <p class="formula"><b>Lít theo định mức = số km × định mức ÷ 100. Chênh lệch % = (lít thực tế − lít định mức) ÷ lít định mức × 100.</b> Số thập phân gõ dấu phẩy hoặc dấu chấm đều được.</p>
+  <p class="formula"><b>Lít theo định mức = số km × định mức ÷ 100. Chênh lệch % = (lít thực tế − lít định mức) ÷ lít định mức × 100.</b> Số km do tài xế nhập, định mức do quản lý nhập, lít thực tế là tổng các lần đổ trong Sổ đổ dầu của tháng đó. Số thập phân gõ dấu phẩy hoặc dấu chấm đều được.</p>
 
 
   <section aria-label="So sánh định mức và thực tế">
@@ -1254,6 +1262,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   'use strict';
   var DEFAULT_PLATES=['61B03295','51B33359','61B03251','61B02918','61B02084'];
   var FIELDS=['rate','km','actual'];
+  var EDIT_FIELDS=['rate','km'];
   var LS_KEY='phucan-fuel-v2';
   var MONTH_RE=/^\d{4}-(0[1-9]|1[0-2])$/;
   var ID_RE=/^[A-Z0-9]{4,12}$/;
@@ -1326,6 +1335,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   /* ---------- Tính toán ---------- */
+  /* Lít thực tế = tổng lít trong Sổ đổ dầu của xe đó trong tháng (nếu tháng đó chưa có lần đổ nào thì dùng số cũ đã nhập tay) */
+  function RV(){
+    var out={}, sums={};
+    Object.keys(refuel).forEach(function(k){
+      var x=refuel[k]; if(!x) return;
+      var key=docId(monthOfMs(x.date),normPlate(x.plate));
+      sums[key]=(sums[key]||0)+x.liters;
+    });
+    Object.keys(rec).forEach(function(k){
+      var x=rec[k];
+      out[k]={month:x.month,plate:x.plate,rate:x.rate,km:x.km,actual:(sums[k]!=null?Math.round(sums[k]*100)/100:x.actual)};
+    });
+    Object.keys(sums).forEach(function(k){
+      if(out[k]) return;
+      var i=k.indexOf('_');
+      out[k]={month:k.slice(0,i),plate:k.slice(i+1),rate:null,km:null,actual:Math.round(sums[k]*100)/100};
+    });
+    return out;
+  }
   function effKm(x){return x?x.km:null;}
   function quotaL(x){var k=effKm(x);return (k!=null&&x&&x.rate!=null)?k*x.rate/100:null;}
   function variance(x){
@@ -1346,7 +1374,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function summarize(m){
     var s={km:0,anyKm:false,Q:0,A:0,anyQ:false,anyA:false,cq:0,ca:0,ck:0,n:0,over:0};
     vehicles.forEach(function(v){
-      var x=rec[docId(m,v.id)]; if(!x) return;
+      var x=RV()[docId(m,v.id)]; if(!x) return;
       var k=effKm(x); if(k!=null){s.km+=k;s.anyKm=true;}
       var q=quotaL(x); if(q!=null){s.Q+=q;s.anyQ=true;}
       if(x.actual!=null){s.A+=x.actual;s.anyA=true;}
@@ -1359,8 +1387,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function prevVal(id,field,key){
     var best=null;
-    Object.keys(rec).forEach(function(k){
-      var x=rec[k];
+    var RVm=RV();Object.keys(RVm).forEach(function(k){
+      var x=RVm[k];
       if(x.plate===id&&x.month<month&&x[field]!=null&&(!best||x.month>best.month)) best=x;
     });
     return best?best[field]:null;
@@ -1370,7 +1398,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function rowHtml(v){
     var id=v.id, f=esc(fmtPlate(id));
     function fld(field,label,unit,ph,cls){
-      return '<label class="fld"><span class="lab" id="lab-'+field+'-'+id+'">'+label+'</span>'+
+      return '<label class="fld f-'+field+'"><span class="lab" id="lab-'+field+'-'+id+'">'+label+'</span>'+
         '<span class="inp'+(cls||'')+'" id="w-'+field+'-'+id+'"><input id="'+field+'-'+id+'" data-p="'+id+'" data-f="'+field+'" type="text" inputmode="decimal" autocomplete="off" placeholder="'+ph+'" aria-label="'+label+', xe '+f+'"><em>'+unit+'</em></span></label>';
     }
     return '<div class="veh" data-p="'+id+'">'+
@@ -1378,8 +1406,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       '<div class="veh-grid">'+
         fld('rate','Định mức','L/100km','0,0')+
         fld('km','Số km trong tháng','km','0')+
-        fld('actual','Lít thực tế','lít','0,0')+
+        '<div class="fld f-actual"><span class="lab">Lít thực tế (từ sổ đổ dầu)</span><span class="inp ro"><b class="roval" id="act-'+id+'">—</b><em>lít</em></span></div>'+
       '</div>'+
+      '<div class="km-save"><button class="btn small primary" type="button" data-kmsave="'+id+'">Lưu số km</button><span class="km-note" id="kn-'+id+'"></span></div>'+
       '<div class="veh-res">'+
         '<div class="res"><span class="lab">Lít theo định mức</span><span class="rv empty" id="rq-'+id+'">—</span></div>'+
         '<div class="res"><span class="lab">Thực tế L/100km</span><span class="rv empty" id="rr-'+id+'">—</span></div>'+
@@ -1420,7 +1449,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     vehicles.forEach(function(v){
       var id=v.id, key=docId(month,id), x=rec[key];
       if(!$('rate-'+id)) return;
-      FIELDS.forEach(function(f){
+      EDIT_FIELDS.forEach(function(f){
         var el=$(f+'-'+id);
         if(!force&&(document.activeElement===el||unsaved.has(key))) return;
         el.value=(x&&x[f]!=null)?numToInput(x[f]):'';
@@ -1433,11 +1462,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function setHint(id,msg){var h=$('hint-'+id);if(!h) return;h.hidden=!msg;h.textContent=msg||'';}
 
   /* ---------- Hiển thị kết quả ---------- */
+  function lockTaixe(){
+    if(!me||me.role!=='taixe') return;
+    vehicles.forEach(function(v){
+      var id=v.id, el=$('km-'+id); if(!el) return;
+      var x=rec[docId(month,id)], has=!!(x&&x.km!=null);
+      el.readOnly=has;
+      var b=rowsEl.querySelector('[data-kmsave="'+id+'"]'), n=$('kn-'+id);
+      if(b) b.hidden=has;
+      if(has&&n&&!n.dataset.keep){n.textContent='Đã lưu. Cần sửa hãy báo quản lý.';n.className='km-note';}
+      if(!has&&n&&!n.dataset.keep){n.textContent='';n.className='km-note';}
+    });
+  }
   function renderRows(){
+    lockTaixe();
     vehicles.forEach(function(v){
       var id=v.id; if(!$('rq-'+id)) return;
-      var x=rec[docId(month,id)];
-      var bad=FIELDS.some(function(f){return $('w-'+f+'-'+id).classList.contains('bad');});
+      var x=RV()[docId(month,id)];
+      var bad=EDIT_FIELDS.some(function(f){return $('w-'+f+'-'+id).classList.contains('bad');});
+      var av=$('act-'+id); if(av) av.textContent=(x&&x.actual!=null)?nf1.format(x.actual):'—';
       var q=bad?null:quotaL(x), vr=bad?null:variance(x), k=bad?null:effKm(x);
       var rq=$('rq-'+id), rr=$('rr-'+id), rd=$('rd-'+id), rp=$('rp-'+id);
       if(q==null){rq.textContent='—';rq.className='rv empty';}
@@ -1459,7 +1502,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('s-q').textContent=s.anyQ?nf1.format(s.Q):'—';
     $('s-a').textContent=s.anyA?nf1.format(s.A):'—';
     var p=$('s-p'), pu=$('s-pu');
-    if(s.pct==null){p.textContent='—';p.className='v';pu.textContent='nhập lít thực tế để so sánh';}
+    if(s.pct==null){p.textContent='—';p.className='v';pu.textContent='cần km, định mức và sổ đổ dầu';}
     else{
       p.textContent=pctTxt(s.pct);p.className='v s-'+statusOf(s.pct);
       pu.textContent=s.over?(s.over+' xe vượt ngưỡng '+nf2.format(threshold)+'%'):('không xe nào vượt ngưỡng '+nf2.format(threshold)+'%');
@@ -1469,12 +1512,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function renderBars(){
     var wrap=$('bars');
     var items=vehicles.map(function(v){
-      var x=rec[docId(month,v.id)], q=quotaL(x), a=x?x.actual:null, vr=variance(x);
+      var x=RV()[docId(month,v.id)], q=quotaL(x), a=x?x.actual:null, vr=variance(x);
       return {id:v.id,q:q,a:a,vr:vr};
     }).filter(function(i){return i.q!=null||i.a!=null;});
     $('c-sub').textContent=mLabel(month);
     if(!items.some(function(i){return i.a!=null;})){
-      wrap.innerHTML='<p class="m-empty">Nhập lít thực tế của các xe ở bảng trên, biểu đồ sẽ so sánh với lít theo định mức của '+mLabel(month).toLowerCase()+'.</p>';
+      wrap.innerHTML='<p class="m-empty">Khi có số km, định mức và các lần đổ dầu trong Sổ đổ dầu của '+mLabel(month).toLowerCase()+', biểu đồ sẽ so sánh lít thực tế với lít theo định mức.</p>';
       return;
     }
     var max=0;
@@ -1497,8 +1540,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function fleetMonths(){
     var set={};
-    Object.keys(rec).forEach(function(k){
-      var x=rec[k];
+    var RVm=RV();Object.keys(RVm).forEach(function(k){
+      var x=RVm[k];
       if(vehicles.some(function(v){return v.id===x.plate;})&&variance(x)) set[x.month]=1;
     });
     return Object.keys(set).sort();
@@ -1547,8 +1590,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function renderMatrix(){
     var set={};
-    Object.keys(rec).forEach(function(k){
-      var x=rec[k];
+    var RVm=RV();Object.keys(RVm).forEach(function(k){
+      var x=RVm[k];
       if(vehicles.some(function(v){return v.id===x.plate;})&&variance(x)) set[x.month]=1;
     });
     var ms=Object.keys(set).sort().slice(-12);
@@ -1564,7 +1607,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     body.innerHTML=vehicles.map(function(v){
       var n=0,over=0;
       var cells=ms.map(function(m){
-        var vr=variance(rec[docId(m,v.id)]);
+        var vr=variance(RV()[docId(m,v.id)]);
         if(!vr) return '<td class="cell"><span class="dash">—</span></td>';
         n++;
         var st=statusOf(vr.pct); if(st==='over') over++;
@@ -1580,8 +1623,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function renderHistory(){
     var set={};
-    Object.keys(rec).forEach(function(k){
-      var x=rec[k]; if(vehicles.some(function(v){return v.id===x.plate;})) set[x.month]=1;
+    var RVm=RV();Object.keys(RVm).forEach(function(k){
+      var x=RVm[k]; if(vehicles.some(function(v){return v.id===x.plate;})) set[x.month]=1;
     });
     var ms=Object.keys(set).sort().reverse();
     var allF=fleetMonths();
@@ -1741,7 +1784,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function onEdit(id){
     var parsed={},bad=false;
-    FIELDS.forEach(function(f){
+    if(me&&me.role==='taixe'){
+      var rk=parseNum($('km-'+id).value);
+      $('w-km-'+id).classList.toggle('bad',!!rk.bad);
+      var nn=$('kn-'+id); if(nn){delete nn.dataset.keep;nn.textContent=rk.bad?'Nhập số, ví dụ 757.':'';nn.className='km-note'+(rk.bad?' err':'');}
+      kmConfirm=null;
+      var bb=rowsEl.querySelector('[data-kmsave="'+id+'"]'); if(bb){bb.textContent='Lưu số km';bb.classList.remove('danger');}
+      return;
+    }
+    EDIT_FIELDS.forEach(function(f){
       var r=parseNum($(f+'-'+id).value);
       parsed[f]=r;
       var isBad=!!r.bad;
@@ -1756,7 +1807,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setHint(id,hintFor(id,parsed));
     var key=docId(month,id);
     var data={month:month,plate:id};
-    FIELDS.forEach(function(f){data[f]=parsed[f].empty?null:parsed[f].v;});
+    var oldRec=rec[key];
+    EDIT_FIELDS.forEach(function(f){data[f]=parsed[f].empty?null:parsed[f].v;});
+    data.actual=(oldRec&&oldRec.actual!=null)?oldRec.actual:null;
     var empty=FIELDS.every(function(f){return data[f]==null;});
     if(empty) delete rec[key]; else rec[key]=data;
     unsaved.set(key,data);
@@ -1808,6 +1861,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var all=Array.prototype.slice.call(rowsEl.querySelectorAll('input:not([readonly])'));
     var i=all.indexOf(e.target);
     if(i>=0&&i<all.length-1) all[i+1].focus(); else e.target.blur();
+  });
+
+  var kmConfirm=null;
+  rowsEl.addEventListener('click',async function(e){
+    var b=e.target.closest&&e.target.closest('[data-kmsave]');
+    if(!b||!me||me.role!=='taixe') return;
+    var id=b.getAttribute('data-kmsave'), note=$('kn-'+id), r=parseNum($('km-'+id).value);
+    function say(t,err,keep){note.textContent=t;note.className='km-note'+(err?' err':'');if(keep) note.dataset.keep='1'; else delete note.dataset.keep;}
+    if(r.empty||r.bad||!(r.v>0)){say('Nhập số km hợp lệ, ví dụ 757.',true);return;}
+    if(kmConfirm!==id){kmConfirm=id;b.textContent='Bấm lần nữa để xác nhận';b.classList.add('danger');say('Lưu xong tài xế không tự sửa được, hãy kiểm tra số km.',false,true);return;}
+    kmConfirm=null;b.classList.remove('danger');b.textContent='Lưu số km';b.disabled=true;
+    var key=docId(month,id), old=rec[key]||{rate:null,actual:null};
+    await ready;setStatus('saving');
+    try{
+      if(mode==='db'){
+        if(db.kmOnly) await db.doc('fuel/'+key).set({month:month,plate:id,km:r.v,kmOnly:true});
+        else await db.doc('fuel/'+key).set({month:month,plate:id,rate:old.rate==null?null:old.rate,km:r.v,actual:old.actual==null?null:old.actual});
+      }
+      rec[key]={month:month,plate:id,rate:old.rate==null?null:old.rate,km:r.v,actual:old.actual==null?null:old.actual};
+      if(mode!=='db') persistLocal();
+      delete note.dataset.keep;setStatus('saved');
+    }catch(err){
+      say(err&&err.code==='exists'?'Số km tháng này đã có, tài xế không sửa được. Hãy báo quản lý.':'Chưa lưu được, hãy kiểm tra mạng rồi thử lại.',true,true);
+      setStatus('error',err);
+    }
+    b.disabled=false;refreshInputs(true);renderAll();
   });
 
   function goMonth(m){
@@ -2194,7 +2273,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var fonts=await loadFonts();
       var s=summarize(month);
       var rows=vehicles.map(function(v){
-        var x=rec[docId(month,v.id)], vr=variance(x), st=vr?statusOf(vr.pct):null;
+        var x=RV()[docId(month,v.id)], vr=variance(x), st=vr?statusOf(vr.pct):null;
         return {plate:fmtPlate(v.id),driver:v.driver,km:effKm(x),rate:x?x.rate:null,q:quotaL(x),a:x?x.actual:null,
           diff:vr?vr.diff:null,pct:vr?vr.pct:null,st:st,stTxt:st?STATUS_TXT[st]:''};
       });
@@ -2838,7 +2917,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if(!r.last||t.start>r.last.start) r.last=t;
       });
       P.months.forEach(function(m){
-        var x=rec[docId(m,v.id)]; if(!x) return;
+        var x=RV()[docId(m,v.id)]; if(!x) return;
         var k=effKm(x); if(k!=null){r.km+=k;r.anyKm=true;}
         var q=quotaL(x); if(q!=null){r.Q+=q;r.anyQ=true;}
         if(x.actual!=null){r.A+=x.actual;r.anyA=true;}
@@ -3039,7 +3118,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       P.months.forEach(function(m){
         var pm=m.split('-');
         vehicles.forEach(function(v){
-          var x=rec[docId(m,v.id)];if(!x) return;
+          var x=RV()[docId(m,v.id)];if(!x) return;
           var vr=variance(x),q=quotaL(x);
           rows2.push([pm[1]+'/'+pm[0],fmtPlate(v.id),x.rate,effKm(x),q,x.actual,vr?vr.diff:null,vr?vr.pct/100:null]);
         });
@@ -3224,7 +3303,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ---------- Đăng nhập và phân quyền ---------- */
   var ROLE_TXT={quanly:'Quản lý',ketoan:'Kế toán',taixe:'Tài xế'};
-  var PERM={edit:['quanly'],add:['quanly','taixe'],del:['quanly'],exp:['quanly','ketoan'],fuel:['quanly','ketoan'],sum:['quanly','ketoan'],adsun:['quanly','ketoan']};
+  var PERM={edit:['quanly'],add:['quanly','taixe'],del:['quanly'],exp:['quanly','ketoan'],fuel:['quanly','ketoan','taixe'],sum:['quanly','ketoan'],adsun:['quanly','ketoan']};
   var me=null, authApi=null, SESSION_KEY='phucan-session', USERS_KEY='phucan-users';
   var FIRST_ID='vanthuan', FIRST_NAME='Văn Thuận';
   function can(a){return !!me&&(PERM[a]||[]).indexOf(me.role)>=0;}
@@ -3305,7 +3384,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var h=document.documentElement;
     h.classList.remove('role-quanly','role-ketoan','role-taixe');
     h.classList.add('role-'+me.role);
-    $('rows').inert=!can('edit');
+    $('rows').inert=!(can('edit')||me.role==='taixe');lockTaixe();
     $('who').hidden=false;
     $('who-txt').innerHTML='Xin chào, <b>'+esc(me.name)+'</b> · '+ROLE_TXT[me.role];
     if(me.role==='taixe'){driverTouched=false;syncDriver();}
@@ -3434,6 +3513,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return {
       media:media,
       auth:auth,
+      kmOnly:true,
       doc:function(path){
         var p=path.split('/'),col=p[0],id=p[1];
         return {
@@ -3453,6 +3533,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
               var tr2=Object.assign({id:id},d),hit2=false;
               cache.trips=cache.trips.map(function(r){if(r.id===id){hit2=true;return tr2;}return r;});
               if(!hit2) cache.trips.push(tr2);
+            }else if(col==='fuel'&&d&&d.kmOnly){
+              await post({op:'setKm',id:id,data:{month:d.month,plate:d.plate,km:d.km}});
+              var kh=false;
+              cache.fuel=cache.fuel.map(function(r){if(r.id===id){kh=true;return Object.assign({},r,{km:d.km});}return r;});
+              if(!kh) cache.fuel.push({id:id,month:d.month,plate:d.plate,rate:null,km:d.km,actual:null});
             }else if(col==='fuel'){
               await post({op:'setRec',id:id,data:d});
               var rec2=Object.assign({id:id},d),hit=false;
