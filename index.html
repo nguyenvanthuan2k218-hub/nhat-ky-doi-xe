@@ -258,6 +258,7 @@ html.role-ketoan .wform{display:none!important}
 html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
 html.role-taixe #tab-fuel>section:not(.ledger),html.role-taixe #tab-fuel>details,html.role-taixe #tab-fuel>.formula,html.role-taixe .veh-res,html.role-taixe .f-rate,html.role-taixe .f-actual{display:none!important}
 html:not(.role-taixe) .km-save,html:not(.role-taixe) .tx-note{display:none!important}
+.inp.name input{font-family:inherit;text-align:left;font-weight:600}
 .inp.ro{background:var(--accent-soft);border-color:transparent}
 .roval{flex:1;text-align:right;font-family:var(--f-mono);font-size:16px;font-weight:600;color:var(--ink);padding:9px 8px 9px 10px}
 .km-save{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
@@ -617,6 +618,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
       <form class="panel tform" id="rf-form" autocomplete="off">
         <label class="fld"><span class="lab">Biển số xe</span><select class="txt" id="rf-plate"></select></label>
+        <label class="fld"><span class="lab">Người đổ dầu</span><span class="inp name"><input id="rf-by" type="text" maxlength="60" readonly></span></label>
         <label class="fld"><span class="lab">Số lít đổ</span><span class="inp"><input id="rf-liters" type="text" inputmode="decimal" placeholder="45,5"><em>lít</em></span></label>
         <label class="fld"><span class="lab">Thành tiền (không bắt buộc)</span><span class="inp"><input id="rf-cost" type="text" inputmode="numeric" placeholder="1.000.000"><em>đồng</em></span></label>
         <div class="fld" style="grid-column:1/-1"><span class="lab">Hình ảnh, video (bắt buộc)</span>
@@ -636,7 +638,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
       <div class="scroll">
         <table class="trips" style="min-width:680px">
-          <thead><tr><th>Ngày</th><th>Biển số</th><th>Số lít</th><th>Thành tiền</th><th>Hình ảnh, video</th><th></th></tr></thead>
+          <thead><tr><th>Ngày</th><th>Biển số</th><th>Người đổ</th><th>Số lít</th><th>Thành tiền</th><th>Hình ảnh, video</th><th></th></tr></thead>
           <tbody id="rf-body"></tbody>
         </table>
       </div>
@@ -2453,7 +2455,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var cost=(x.cost==null||x.cost==='')?null:Number(x.cost);
     if(!plate||!isFinite(liters)||liters<=0||!isFinite(date)) return null;
     if(cost!=null&&(!isFinite(cost)||cost<0)) cost=null;
-    return {id:String(id),plate:plate,liters:liters,cost:cost,media:cleanMedia(x.media),date:date,at:isFinite(at)?at:date};
+    return {id:String(id),plate:plate,liters:liters,cost:cost,by:String(x.by==null?'':x.by).trim().slice(0,60),media:cleanMedia(x.media),date:date,at:isFinite(at)?at:date};
   }
   function parseLiters(s){
     var t=String(s||'').trim().replace(/\s|lít/gi,'');
@@ -2484,9 +2486,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('rf-count').textContent=list.length+' lần'+(list.length?', '+nf1.format(L)+' lít':'')+(anyC?', '+moneyTxt(C):'');
     $('rf-body').innerHTML=list.length?list.map(function(x){
       var asking=refuelConfirm===x.id;
-      return '<tr><td class="num">'+dmyFull(x.date)+'</td><td><span class="plate-sm">'+esc(fmtPlate(x.plate))+'</span></td><td class="num">'+nf1.format(x.liters)+' lít</td><td class="num">'+(x.cost!=null?moneyTxt(x.cost):'—')+'</td><td>'+mediaCell(x)+'</td>'+
+      return '<tr><td class="num">'+dmyFull(x.date)+'</td><td><span class="plate-sm">'+esc(fmtPlate(x.plate))+'</span></td><td>'+(x.by?esc(x.by):'—')+'</td><td class="num">'+nf1.format(x.liters)+' lít</td><td class="num">'+(x.cost!=null?moneyTxt(x.cost):'—')+'</td><td>'+mediaCell(x)+'</td>'+
         '<td><button class="mbtn" type="button" data-rdel="'+esc(x.id)+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
-    }).join(''):'<tr><td class="empty" colspan="6">Chưa có lần đổ dầu nào trong '+mLabel(month).toLowerCase()+'. Ghi lần đầu ở phía trên.</td></tr>';
+    }).join(''):'<tr><td class="empty" colspan="7">Chưa có lần đổ dầu nào trong '+mLabel(month).toLowerCase()+'. Ghi lần đầu ở phía trên.</td></tr>';
     $('rf-sum-title').textContent='Tổng theo xe '+mLabel(month).toLowerCase();
     var tl=0,tc=0,tn=0,tAnyC=false;
     var rows=vehicles.map(function(v){
@@ -2502,7 +2504,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     await ready;
     setStatus('saving');
     try{
-      if(mode==='db') await db.doc('refuel/'+x.id).set({plate:x.plate,liters:x.liters,cost:x.cost,media:x.media,date:x.date,at:x.at});
+      if(mode==='db') await db.doc('refuel/'+x.id).set({plate:x.plate,liters:x.liters,cost:x.cost,by:x.by||'',media:x.media,date:x.date,at:x.at});
       else persistLocal();
       if(refuelPending.get(x.id)===x) refuelPending.delete(x.id);
       setStatus('saved');
@@ -2659,7 +2661,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       rfErr(e&&e.message==='no-assets'?'Chưa bật chỗ lưu hình ảnh, video ở bản này.':'Tải lên chưa được. Hãy kiểm tra mạng rồi thử lại, hình ảnh và video vẫn còn trong ô.');
       return;
     }
-    var x={id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,liters:liters,cost:cost.v,media:done,date:dayStart(nowNaive()),at:Date.now()};
+    var x={id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,liters:liters,cost:cost.v,by:(me&&me.name)||'',media:done,date:dayStart(nowNaive()),at:Date.now()};
     refuel[x.id]=x;refuelPending.set(x.id,x);
     $('rf-liters').value='';$('rf-cost').value='';clearRfFiles();
     rfBusy=false;$('rf-submit').disabled=false;rfProg('');
@@ -3127,8 +3129,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       sheet('Định mức dầu','Định mức dầu và lít thực tế',cols2,rows2,{totals:true,totalLabel:'Tổng',totalVals:tv2,style:pctStyle(7)});
     }
     // 3. Sổ đổ dầu
-    var cols3=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Số lít',w:12,fmt:L1,sum:true},{h:'Thành tiền',w:18,fmt:MONEY,sum:true},{h:'Số tệp hình ảnh, video',w:14,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
-    if(want('refuel')) sheet('Sổ đổ dầu','Sổ đổ dầu',cols3,refuels.map(function(x){return [new Date(x.date),fmtPlate(x.plate),x.liters,x.cost,(x.media||[]).length,atDate(x.at)];}),{totals:true,totalLabel:'Tổng'});
+    var cols3=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Người đổ dầu',w:20,al:'left'},{h:'Số lít',w:12,fmt:L1,sum:true},{h:'Thành tiền',w:18,fmt:MONEY,sum:true},{h:'Số tệp hình ảnh, video',w:14,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
+    if(want('refuel')) sheet('Sổ đổ dầu','Sổ đổ dầu',cols3,refuels.map(function(x){return [new Date(x.date),fmtPlate(x.plate),x.by||'',x.liters,x.cost,(x.media||[]).length,atDate(x.at)];}),{totals:true,totalLabel:'Tổng'});
     // 4. Hành trình
     var cols4=[{h:'Bắt đầu chạy',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Tài xế',w:24,al:'left'},{h:'Nơi đi',w:32,al:'left',wrap:true},{h:'Nơi đến',w:32,al:'left',wrap:true},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
     if(want('trips')) sheet('Sổ hành trình','Sổ hành trình xe',cols4,tripsL.map(function(t){return [new Date(t.start),fmtPlate(t.plate),t.driver,t.from,t.to,atDate(t.at)];}),{notes:tripsL.length?['Tổng số chuyến trong kỳ: '+tripsL.length+'.']:[]});
@@ -3385,6 +3387,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     h.classList.remove('role-quanly','role-ketoan','role-taixe');
     h.classList.add('role-'+me.role);
     $('rows').inert=!(can('edit')||me.role==='taixe');lockTaixe();
+    var rb=$('rf-by'); if(rb){rb.value=me.name||me.id;rb.readOnly=!can('edit');}
     $('who').hidden=false;
     $('who-txt').innerHTML='Xin chào, <b>'+esc(me.name)+'</b> · '+ROLE_TXT[me.role];
     if(me.role==='taixe'){driverTouched=false;syncDriver();}
