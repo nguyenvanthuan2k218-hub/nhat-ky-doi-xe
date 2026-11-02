@@ -797,7 +797,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
     </section>
     <section id="iv-sec" aria-label="Đối chiếu giữa các lần đổ dầu" style="margin-top:28px">
-      <div class="sec-head"><h2>Đối chiếu giữa các lần đổ dầu</h2></div>
+      <div class="sec-head"><h2>Đối chiếu giữa các lần đổ dầu</h2><button class="btn small primary xl-btn" type="button" data-xl="iv" hidden>Xuất Excel</button></div>
       <p class="sec-sub" style="margin-top:-6px">Số km lấy từ Sổ hành trình, lít thực đổ lấy từ Sổ đổ dầu. Lượng dầu đổ ở lần sau được tính cho quãng đường từ lần đổ trước đến lần đổ đó, vì vậy nên đổ đầy bình mỗi lần.</p>
       <div class="ivbar">
         <label class="fld"><span class="lab">Xe</span><select class="txt" id="iv-plate"></select></label>
@@ -812,6 +812,26 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         </table>
       </div>
       <p class="sec-sub" id="iv-note" style="margin-top:8px"></p>
+    </section>
+    <section id="cmp-sec" aria-label="So sánh giữa các tháng" style="margin-top:32px">
+      <div class="sec-head"><h2>So sánh giữa các tháng</h2><button class="btn small primary xl-btn" type="button" data-xl="cmp" hidden>Xuất Excel</button></div>
+      <p class="sec-sub" style="margin-top:-6px">So số km, lít định mức, lít thực đổ và mức hao giữa các tháng, kèm mức tăng giảm so với tháng liền trước. Định mức lấy từ tab Định mức dầu.</p>
+      <div class="ivbar">
+        <label class="fld"><span class="lab">Xe</span><select class="txt" id="cmp-plate"></select></label>
+        <label class="fld"><span class="lab">Đến tháng</span><select class="txt" id="cmp-end"></select></label>
+        <label class="fld"><span class="lab">Số tháng so sánh</span><select class="txt" id="cmp-n"><option value="3">3 tháng</option><option value="6" selected>6 tháng</option><option value="12">12 tháng</option></select></label>
+      </div>
+      <div class="scroll">
+        <table style="min-width:900px">
+          <thead><tr><th>Tháng</th><th>Số chuyến</th><th>Số km</th><th>Lít theo định mức</th><th>Lít thực đổ</th><th>Chênh lệch (lít)</th><th>Chênh lệch (%)</th><th>TB thực tế (L/100km)</th><th>Km so với tháng trước</th><th>Lít thực đổ so với tháng trước</th></tr></thead>
+          <tbody id="cmp-body"></tbody>
+        </table>
+      </div>
+      <div id="cmp-mx-wrap" hidden>
+        <h3 style="margin:22px 0 8px;font-size:16px">Chênh lệch so với định mức theo từng xe</h3>
+        <div class="scroll"><table style="min-width:720px"><thead id="cmp-mx-head"></thead><tbody id="cmp-mx-body"></tbody></table></div>
+      </div>
+      <p class="sec-sub" id="cmp-note" style="margin-top:8px"></p>
     </section>
   </div>
 </div>
@@ -3240,7 +3260,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       body=cur.rows.map(function(r){return row('<span class="plate-sm">'+esc(fmtPlate(r.id))+'</span>',r);}).join('')+row('Cả đội',T,'tot');
       $('sum-note').textContent='Chênh lệch và mức trung bình chỉ tính các tháng của xe có đủ số km, định mức và lít thực tế.';
     }
-    renderIv();
+    renderIv();renderCmp();
     $('sum-head').innerHTML=head;
     $('sum-body').innerHTML=vehicles.length?body:'<tr><td class="empty" colspan="8">Chưa có xe nào trong danh sách.</td></tr>';
     var yb=$('sum-year');
@@ -3296,18 +3316,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     sel.innerHTML=days.map(function(d){return '<option value="'+d+'">'+dmyFull(d*864e5)+'</option>';}).join('');
     if(cur&&days.indexOf(Number(cur))>=0) sel.value=cur; else if(days.length) sel.value=String(lastDefault?days[days.length-1]:days[0]);
   }
-  function renderIv(){
-    var sec=$('iv-sec'); if(!sec) return;
-    var ps=$('iv-plate'), curP=ps.value||'*';
-    ps.innerHTML='<option value="*">Tất cả các xe</option>'+vehicles.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
-    ps.value=(curP==='*'||vehicles.some(function(v){return v.id===curP;}))?curP:'*';
-    var plates=ps.value==='*'?vehicles.map(function(v){return v.id;}):[ps.value];
-    var all={};plates.forEach(function(pl){ivGroups(pl).forEach(function(g){all[g.day]=1;});});
-    var days=Object.keys(all).map(Number).sort(function(a,b){return a-b;});
-    var fs=$('iv-from'), ts=$('iv-to'), pf=fs.value, pt=ts.value;
-    ivSelOpts(fs,days,pf,false);ivSelOpts(ts,days,pt,true);
-    if(Number(fs.value)>Number(ts.value)&&days.length) fs.value=String(days[0]);
-    var F=Number(fs.value), Tt=Number(ts.value), rows=[], T={trips:0,km:0,noKm:0,Q:0,noRate:0,A:0,legs:0,over:0,ck:0,cq:0,ca:0}, short=[];
+  function ivCompute(plates,F,Tt){
+    var rows=[], T={trips:0,km:0,noKm:0,Q:0,noRate:0,A:0,legs:0,over:0,ck:0,cq:0,ca:0}, short=[];
     plates.forEach(function(pl){
       var g=ivGroups(pl), bi=-1,ei=-1;
       g.forEach(function(x,i){if(x.day<=F) bi=i; if(x.day<=Tt) ei=i;});
@@ -3320,6 +3330,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         if(L.pct!=null&&L.pct>threshold) T.over++;
       }
     });
+    return {rows:rows,T:T,short:short};
+  }
+  function ivSel(){
+    var ps=$('iv-plate');
+    var plates=ps.value==='*'?vehicles.map(function(v){return v.id;}):[ps.value];
+    return {plates:plates,F:Number($('iv-from').value),T:Number($('iv-to').value),pText:ps.options[ps.selectedIndex]?ps.options[ps.selectedIndex].text:''};
+  }
+  function renderIv(){
+    var sec=$('iv-sec'); if(!sec) return;
+    var ps=$('iv-plate'), curP=ps.value||'*';
+    ps.innerHTML='<option value="*">Tất cả các xe</option>'+vehicles.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
+    ps.value=(curP==='*'||vehicles.some(function(v){return v.id===curP;}))?curP:'*';
+    var plates=ps.value==='*'?vehicles.map(function(v){return v.id;}):[ps.value];
+    var all={};plates.forEach(function(pl){ivGroups(pl).forEach(function(g){all[g.day]=1;});});
+    var days=Object.keys(all).map(Number).sort(function(a,b){return a-b;});
+    var fs=$('iv-from'), ts=$('iv-to'), pf=fs.value, pt=ts.value;
+    ivSelOpts(fs,days,pf,false);ivSelOpts(ts,days,pt,true);
+    if(Number(fs.value)>Number(ts.value)&&days.length) fs.value=String(days[0]);
+    var C=ivCompute(plates,Number(fs.value),Number(ts.value)), rows=C.rows, T=C.T, short=C.short;
     var okAll=T.cq>0, diff=okAll?T.ca-T.cq:null, pct=okAll?diff/T.cq*100:null;
     function stat(k,v,u){return '<div class="stat"><span class="k">'+k+'</span><span class="v">'+v+'</span><span class="u">'+u+'</span></div>';}
     $('iv-strip').innerHTML=
@@ -3339,12 +3368,62 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   ['iv-plate','iv-from','iv-to'].forEach(function(id){$(id).addEventListener('change',renderIv);});
 
+  /* ---------- So sánh giữa các tháng ---------- */
+  function chg(cur,prev){return (cur!=null&&prev!=null&&prev>0)?(cur-prev)/prev*100:null;}
+  function chgTxt(c){
+    if(c==null) return '<span class="dash">—</span>';
+    if(Math.abs(c)<0.05) return '<span style="color:var(--muted)">= 0,0%</span>';
+    return '<span style="color:var(--muted)">'+(c>0?'▲ ':'▼ ')+nf1.format(Math.abs(c))+'%</span>';
+  }
+  function cmpCompute(pv,end,n){
+    var ms=[],i;for(i=n-1;i>=0;i--) ms.push(shiftMonth(end,-i));
+    var aggs=ms.map(function(m){var q=m.split('-');return aggAll(periodOf('month',Date.UTC(+q[0],+q[1]-1,1)));});
+    var rows=ms.map(function(m,k){
+      var a=aggs[k], r=pv==='*'?a.T:(a.rows.filter(function(x){return x.id===pv;})[0]||{});
+      return {m:m,trips:r.trips||0,km:r.anyKm?r.km:null,Q:r.anyQ?r.Q:null,A:r.anyA?r.A:null,diff:r.cq>0?r.ca-r.cq:null,pct:r.pct==null?null:r.pct,avg:r.avg==null?null:r.avg};
+    });
+    rows.forEach(function(r,k){var pr=k?rows[k-1]:null;r.dKm=pr?chg(r.km,pr.km):null;r.dA=pr?chg(r.A,pr.A):null;});
+    var matrix=pv==='*'?vehicles.map(function(v){return {id:v.id,cells:aggs.map(function(a){return a.rows.filter(function(x){return x.id===v.id;})[0]||null;})};}):[];
+    return {ms:ms,rows:rows,matrix:matrix};
+  }
+  function cmpSel(){
+    var ps=$('cmp-plate'),es=$('cmp-end');
+    return {pv:ps.value||'*',end:es.value||month,n:Number($('cmp-n').value)||6,pText:ps.options[ps.selectedIndex]?ps.options[ps.selectedIndex].text:''};
+  }
+  function renderCmp(){
+    if(!$('cmp-sec')) return;
+    var ps=$('cmp-plate'), cp=ps.value||'*';
+    ps.innerHTML='<option value="*">Tất cả các xe</option>'+vehicles.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
+    ps.value=(cp==='*'||vehicles.some(function(v){return v.id===cp;}))?cp:'*';
+    var es=$('cmp-end'), ce=es.value, cur=monthOfMs(nowNaive()), opts=[], k;
+    for(k=0;k<24;k++) opts.push(shiftMonth(cur,-k));
+    es.innerHTML=opts.map(function(m){return '<option value="'+m+'">'+mLabel(m)+'</option>';}).join('');
+    es.value=(ce&&opts.indexOf(ce)>=0)?ce:cur;
+    var S=cmpSel(), C=cmpCompute(S.pv,S.end,S.n);
+    $('cmp-body').innerHTML=C.rows.map(function(r){
+      return '<tr><td>'+esc(mLabel(r.m))+'</td><td class="num">'+r.trips+'</td><td class="num">'+(r.km!=null?nfK.format(r.km):'—')+'</td><td class="num">'+(r.Q!=null?nf1.format(r.Q):'—')+'</td><td class="num">'+(r.A!=null?nf1.format(r.A):'—')+'</td><td class="num">'+(r.diff!=null?nfS.format(r.diff):'—')+'</td><td>'+chipPct(r.pct)+'</td><td class="num">'+(r.avg!=null?nf1.format(r.avg):'—')+'</td><td class="num">'+chgTxt(r.dKm)+'</td><td class="num">'+chgTxt(r.dA)+'</td></tr>';
+    }).join('');
+    var mw=$('cmp-mx-wrap');
+    mw.hidden=!C.matrix.length;
+    if(C.matrix.length){
+      $('cmp-mx-head').innerHTML='<tr><th>Xe</th>'+C.ms.map(function(m){var q=m.split('-');return '<th>'+q[1]+'/'+q[0]+'</th>';}).join('')+'</tr>';
+      $('cmp-mx-body').innerHTML=C.matrix.map(function(x){
+        return '<tr><td><span class="plate-sm">'+esc(fmtPlate(x.id))+'</span></td>'+x.cells.map(function(c){
+          if(!c||c.pct==null) return '<td class="num"><span class="dash">—</span></td>';
+          return '<td class="num">'+chipPct(c.pct)+(c.avg!=null?'<br><small style="color:var(--muted)">'+nf1.format(c.avg)+' L/100km</small>':'')+'</td>';
+        }).join('')+'</tr>';
+      }).join('');
+    }
+    $('cmp-note').textContent='Chênh lệch và mức hao chỉ tính các tháng có đủ số km, định mức và lít thực đổ. Dấu — nghĩa là chưa đủ số liệu.'+(S.end===monthOfMs(nowNaive())?' Tháng hiện tại chưa kết thúc nên so sánh với tháng trước có thể chưa đầy đủ.':'');
+  }
+  ['cmp-plate','cmp-end','cmp-n'].forEach(function(id){$(id).addEventListener('change',renderCmp);});
+
   /* ---------- Xuất Excel ---------- */
   var XG='FF138A42', XSOFT='FFE3F1E7', XZEB='FFF4F9F5', XLINE='FFC9D8CD', XINK='FF0F2A1B', XMUTED='FF5B7566';
   function xFill(c){return {type:'pattern',pattern:'solid',fgColor:{argb:c}};}
   function colLetter(i){return String.fromCharCode(65+i);}
   function sumOf(rows,ci){var t=0;rows.forEach(function(r){if(typeof r[ci]==='number') t+=r[ci];});return t;}
-  function makeXlsx(P,A,only,ids){
+  function makeXlsx(P,A,only,ids,subPre){
     function want(k){return !only||only.indexOf(k)>=0;}
     var T=A.T, hasFuel=P.type!=='week', wb=new ExcelJS.Workbook();
     wb.creator='Nhật ký đội xe Phúc An';wb.created=new Date();
@@ -3353,7 +3432,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     function inP(ms){return ms>=P.from&&ms<P.to;}
     var nn=new Date(nowNaive());
     var stamp='Xuất lúc '+p2(nn.getUTCHours())+':'+p2(nn.getUTCMinutes())+' ngày '+dmyFull(nn.getTime())+(me?' · '+me.name:'');
-    var sub=P.label+' ('+P.range+') · '+stamp+(ids?' · Chỉ '+Object.keys(ids).length+' lần đổ dầu đã chọn':'');
+    var sub=(subPre||(P.label+' ('+P.range+')'))+' · '+stamp+(ids?' · Chỉ '+Object.keys(ids).length+' lần đổ dầu đã chọn':'');
     function sheet(name,title,cols,rows,o){
       o=o||{};
       var n=cols.length;
@@ -3462,6 +3541,30 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var tv2=[];tv2[7]=T.pct!=null?T.pct/100:null;
       sheet('Định mức dầu','Định mức dầu và lít thực tế',cols2,rows2,{totals:true,totalLabel:'Tổng',totalVals:tv2,style:pctStyle(7)});
     }
+
+    // 7. Đối chiếu giữa các lần đổ dầu
+    if(only&&only.indexOf('iv')>=0){
+      var IS=ivSel(), IC=ivCompute(IS.plates,IS.F,IS.T), IT=IC.T;
+      var colsI=[{h:'Biển số xe',w:15,al:'left'},{h:'Từ ngày (sau lần đổ trước)',w:16,fmt:'dd/mm/yyyy',al:'left'},{h:'Đến ngày (lần đổ này)',w:16,fmt:'dd/mm/yyyy',al:'left'},{h:'Số chuyến',w:11,fmt:'#,##0',sum:true},{h:'Số km',w:12,fmt:L1,sum:true},{h:'Lít theo định mức',w:14,fmt:L1},{h:'Lít thực đổ',w:12,fmt:L1,sum:true},{h:'Chênh lệch (lít)',w:14,fmt:LF},{h:'Chênh lệch (%)',w:13,fmt:PCT},{h:'TB thực tế (L/100km)',w:14,fmt:'0.00'}];
+      var rowsI=IC.rows.map(function(L){return [fmtPlate(L.plate),new Date(L.d0*864e5-tz),new Date(L.d1*864e5-tz),L.trips,L.km>0?L.km:null,L.diff!=null?L.Q:null,L.A,L.diff,L.pct!=null?L.pct/100:null,L.avg];});
+      var tvI=[];tvI[5]=IT.cq>0?IT.cq:null;tvI[7]=IT.cq>0?IT.ca-IT.cq:null;tvI[8]=IT.cq>0?(IT.ca-IT.cq)/IT.cq:null;tvI[9]=IT.ck>0?IT.ca/IT.ck*100:null;
+      sheet('Đối chiếu lần đổ dầu','Đối chiếu giữa các lần đổ dầu',colsI,rowsI,{totals:true,totalLabel:'Tổng',totalVals:tvI,style:pctStyle(8),notes:['Số km cộng từ Sổ hành trình, lít thực đổ lấy từ Sổ đổ dầu. Lượng dầu lần đổ sau tính cho quãng đường từ lần đổ trước đến lần đổ đó.','Chuyến được tính vào chặng từ ngày sau lần đổ trước đến hết ngày của lần đổ sau. Tổng chênh lệch chỉ tính các chặng có đủ km và định mức. Ngưỡng cảnh báo: '+nf2.format(threshold)+'%.']});
+    }
+    // 8. So sánh giữa các tháng
+    if(only&&only.indexOf('cmp')>=0){
+      var CS=cmpSel(), CC=cmpCompute(CS.pv,CS.end,CS.n);
+      var CHG='+0.0%;-0.0%;0.0%';
+      var colsC=[{h:'Tháng',w:14,al:'left'},{h:'Số chuyến',w:11,fmt:'#,##0'},{h:'Số km',w:12,fmt:L1},{h:'Lít theo định mức',w:14,fmt:L1},{h:'Lít thực đổ',w:12,fmt:L1},{h:'Chênh lệch (lít)',w:14,fmt:LF},{h:'Chênh lệch (%)',w:13,fmt:PCT},{h:'TB thực tế (L/100km)',w:14,fmt:'0.00'},{h:'Km so với tháng trước',w:15,fmt:CHG},{h:'Lít thực đổ so với tháng trước',w:17,fmt:CHG}];
+      var rowsC=CC.rows.map(function(r){return [mLabel(r.m),r.trips,r.km,r.Q,r.A,r.diff,r.pct!=null?r.pct/100:null,r.avg,r.dKm!=null?r.dKm/100:null,r.dA!=null?r.dA/100:null];});
+      sheet('So sánh các tháng','So sánh giữa các tháng · '+CS.pText,colsC,rowsC,{style:pctStyle(6),notes:['Chênh lệch và mức hao chỉ tính các tháng có đủ số km, định mức và lít thực đổ. Ô trống nghĩa là chưa đủ số liệu. Ngưỡng cảnh báo: '+nf2.format(threshold)+'%.']});
+      if(CC.matrix.length){
+        var colsM=[{h:'Biển số xe',w:15,al:'left'}].concat(CC.ms.map(function(m){var q=m.split('-');return {h:q[1]+'/'+q[0],w:13,fmt:PCT};}));
+        var rowsM=CC.matrix.map(function(x){return [fmtPlate(x.id)].concat(x.cells.map(function(c){return c&&c.pct!=null?c.pct/100:null;}));});
+        sheet('Từng xe theo tháng','Chênh lệch so với định mức theo từng xe và tháng',colsM,rowsM,{style:function(row,vals){
+          for(var ci=1;ci<vals.length;ci++){var pv=vals[ci];if(pv==null) continue;var st=statusOf(pv*100),c=row.getCell(ci+1);c.font={name:'Calibri',size:11,bold:true,color:{argb:st==='over'?'FFB3261E':st==='slight'?'FF8A5A00':'FF138A42'}};c.fill=xFill(st==='over'?'FFFDE7E5':st==='slight'?'FFFFF1D6':XSOFT);}
+        },notes:['Số trong ô là chênh lệch lít thực đổ so với định mức của xe trong tháng đó.']});
+      }
+    }
     // 3. Sổ đổ dầu
     var cols3=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Người đổ dầu',w:20,al:'left'},{h:'Số lít',w:12,fmt:L1,sum:true},{h:'Thành tiền',w:18,fmt:MONEY,sum:true},{h:'Số tệp hình ảnh, video',w:14,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
     if(want('refuel')) sheet('Sổ đổ dầu','Sổ đổ dầu',cols3,refuels.map(function(x){return [new Date(x.date),fmtPlate(x.plate),x.by||'',x.liters,x.cost,(x.media||[]).length,atDate(x.at)];}),{totals:true,totalLabel:'Tổng'});
@@ -3559,8 +3662,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     btn.disabled=false;btn.textContent=old;
   }
   Array.prototype.forEach.call(document.querySelectorAll('.zip-btn'),function(b){b.addEventListener('click',function(){exportZip(b);});});
-  var XL_NAME={sum:'nhat-ky-doi-xe',fuel:'dinh-muc-dau',refuel:'so-do-dau',trips:'so-hanh-trinh',maint:'sua-chua-bao-duong'};
+  var XL_NAME={iv:'doi-chieu-lan-do-dau',cmp:'so-sanh-cac-thang',sum:'nhat-ky-doi-xe',fuel:'dinh-muc-dau',refuel:'so-do-dau',trips:'so-hanh-trinh',maint:'sua-chua-bao-duong'};
   function xlsxName(P,key,sel){
+    if(key==='iv'||key==='cmp'){var n0=new Date(nowNaive());return XL_NAME[key]+'-'+n0.getUTCFullYear()+'-'+p2(n0.getUTCMonth()+1)+'-'+p2(n0.getUTCDate())+'.xlsx';}
     var d=new Date(P.from),y=d.getUTCFullYear(),base=(XL_NAME[key]||'nhat-ky-doi-xe')+(sel?'-da-chon':'');
     if(P.type==='year') return base+'-nam-'+y+'.xlsx';
     if(P.type==='week'){var iw=isoWeekOf(P.from);return base+'-tuan-'+iw.y+'-'+p2(iw.w)+'.xlsx';}
@@ -3577,7 +3681,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       else{var mp=month.split('-');P=periodOf('month',Date.UTC(+mp[0],+mp[1]-1,1));}
       var A=aggAll(P);
       var xids=key==='refuel'?rfSelIds():null;
-      var wb=makeXlsx(P,A,key==='sum'?null:[key],xids);
+      var subPre=null;
+      if(key==='iv'){var is0=ivSel();subPre='Xe: '+is0.pText+' · từ lần đổ ngày '+dmyFull(is0.F*864e5)+' đến lần đổ ngày '+dmyFull(is0.T*864e5);}
+      if(key==='cmp'){var cs0=cmpSel();subPre='Xe: '+cs0.pText+' · '+cs0.n+' tháng, đến '+mLabel(cs0.end);}
+      var wb=makeXlsx(P,A,key==='sum'?null:[key],xids,subPre);
       btn.textContent='Đang thêm hình ảnh…';
       await addImageSheets(wb,P,key,xids);
       var buf=await wb.xlsx.writeBuffer();
