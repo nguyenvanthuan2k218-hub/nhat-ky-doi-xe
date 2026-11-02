@@ -308,7 +308,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
 .listbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .listbar .txt{width:auto;min-width:150px}
 .sumbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
-.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
+.mapbox{border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--surface);min-height:60px;display:flex;align-items:center;justify-content:center}.mapbox img{display:block;width:100%;height:auto}.mapbox .sec-sub{padding:16px}.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{border:0;background:none;color:var(--ink);padding:8px 16px;font-weight:600;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line-strong)}
@@ -592,6 +592,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <label class="fld"><span class="lab">Nơi đi</span><input class="txt" id="trip-from" type="text" list="dl-places" maxlength="120" placeholder="Ví dụ: Bệnh viện Phúc An"></label>
         <label class="fld"><span class="lab">Nơi đến</span><input class="txt" id="trip-to" type="text" list="dl-places" maxlength="120" placeholder="Ví dụ: Sở Y tế"></label>
         <div class="fld" id="trip-alts" style="grid-column:1/-1" hidden></div>
+        <div class="fld" id="trip-map" style="grid-column:1/-1" hidden><span class="lab">Bản đồ đường đi</span><div class="mapbox"><img id="trip-map-img" alt="Bản đồ đường đi đã chọn" hidden><span class="sec-sub" id="trip-map-note"></span></div></div>
         <div class="fld"><span class="lab">Chiều đi</span><span class="seg" id="trip-way" role="group" aria-label="Một chiều hay hai chiều"><button type="button" data-way="1" aria-pressed="true">Một chiều</button><button type="button" data-way="2" aria-pressed="false">Hai chiều</button></span></div>
         <label class="fld"><span class="lab">Quãng đường</span><span class="inp ro" id="trip-km-w"><input id="trip-km" type="text" inputmode="decimal" readonly placeholder="Tự tính"><em>km</em></span><span class="sec-sub" id="trip-km-note" style="margin-top:4px"></span></label>
         <label class="fld"><span class="lab">Giờ bắt đầu chạy</span><span class="inp"><input id="trip-time" type="text" inputmode="numeric" placeholder="07:30"><em>giờ:phút</em></span></label>
@@ -2509,9 +2510,25 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('trip-alts').addEventListener('click',function(e){
     var b=e.target.closest?e.target.closest('button[data-alt]'):null; if(!b) return;
     tripAlt=Number(b.getAttribute('data-alt'));var a=tripAlts[tripAlt]; if(!a) return;
-    renderAlts();setTripKm(a.km,a.via?'Đường qua '+a.via+'.':'Đường đã chọn.');
+    renderAlts();loadMap();setTripKm(a.km,a.via?'Đường qua '+a.via+'.':'Đường đã chọn.');
   });
-  function clearAlts(){tripAlts=[];tripAlt=0;renderAlts();}
+  var mapSeq=0, mapTimer=null;
+  function loadMap(){
+    var box=$('trip-map');
+    if(!tripAlts.length||!(db&&db.routeMap)){box.hidden=true;return;}
+    box.hidden=false;
+    var seq=++mapSeq,img=$('trip-map-img'),note=$('trip-map-note');
+    img.hidden=true;note.hidden=false;note.textContent='Đang tải bản đồ…';
+    if(mapTimer) clearTimeout(mapTimer);
+    mapTimer=setTimeout(function(){
+      db.routeMap($('trip-from').value.trim(),$('trip-to').value.trim(),tripAlt).then(function(j){
+        if(seq!==mapSeq) return;
+        if(j&&j.data&&/^image\/(png|jpeg|gif)$/.test(j.mime||'')){img.src='data:'+j.mime+';base64,'+j.data;img.hidden=false;note.hidden=true;}
+        else note.textContent='Chưa tải được bản đồ, vẫn dùng được số km ở trên.';
+      }).catch(function(){if(seq===mapSeq) note.textContent='Chưa tải được bản đồ, vẫn dùng được số km ở trên.';});
+    },250);
+  }
+  function clearAlts(){tripAlts=[];tripAlt=0;mapSeq++;$('trip-map').hidden=true;renderAlts();}
   function calcTripKm(){
     var from=$('trip-from').value.trim(), to=$('trip-to').value.trim();
     if(from&&to&&lastCalc===from+'|'+to&&(tripAlts.length||tripBase!=null)) return;
@@ -2525,7 +2542,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setTripKm(null,'Đang tính km theo Google Maps…');
     db.routeKm(from,to).then(function(j){
       if(seq!==tripKmSeq) return;
-      if(j&&j.km!=null){if(j.alts&&j.alts.length){tripAlts=j.alts;tripAlt=0;renderAlts();setTripKm(j.alts[0].km,j.alts[0].via?'Đường qua '+j.alts[0].via+'.':'Theo Google Maps.');}else setTripKm(j.km,j.src==='preset'?'Theo tuyến đã lưu.':'Ước tính theo Google Maps.');}
+      if(j&&j.km!=null){if(j.alts&&j.alts.length){tripAlts=j.alts;tripAlt=0;renderAlts();loadMap();setTripKm(j.alts[0].km,j.alts[0].via?'Đường qua '+j.alts[0].via+'.':'Theo Google Maps.');}else setTripKm(j.km,j.src==='preset'?'Theo tuyến đã lưu.':'Ước tính theo Google Maps.');}
       else setTripKm(null,'Chưa tính được km. Hãy ghi rõ địa chỉ hơn hoặc báo quản lý.');
     }).catch(function(){if(seq===tripKmSeq) setTripKm(null,'Chưa tính được km, hãy kiểm tra mạng.');});
   }
@@ -3784,7 +3801,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       media:media,
       auth:auth,
       kmOnly:true,
-      routeKm:function(from,to){return call({op:'routeKm',from:from,to:to});},
+      routeKm:function(from,to){return call({op:'routeKm',from:from,to:to});},routeMap:function(from,to,alt){return call({op:'routeMap',from:from,to:to,alt:alt});},
       doc:function(path){
         var p=path.split('/'),col=p[0],id=p[1];
         return {
