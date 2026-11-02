@@ -308,6 +308,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
 .listbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .listbar .txt{width:auto;min-width:150px}
 .sumbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{border:0;background:none;color:var(--ink);padding:8px 16px;font-weight:600;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line-strong)}
@@ -590,6 +591,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <span class="fld"></span>
         <label class="fld"><span class="lab">Nơi đi</span><input class="txt" id="trip-from" type="text" list="dl-places" maxlength="120" placeholder="Ví dụ: Bệnh viện Phúc An"></label>
         <label class="fld"><span class="lab">Nơi đến</span><input class="txt" id="trip-to" type="text" list="dl-places" maxlength="120" placeholder="Ví dụ: Sở Y tế"></label>
+        <div class="fld" id="trip-alts" style="grid-column:1/-1" hidden></div>
         <div class="fld"><span class="lab">Chiều đi</span><span class="seg" id="trip-way" role="group" aria-label="Một chiều hay hai chiều"><button type="button" data-way="1" aria-pressed="true">Một chiều</button><button type="button" data-way="2" aria-pressed="false">Hai chiều</button></span></div>
         <label class="fld"><span class="lab">Quãng đường</span><span class="inp ro" id="trip-km-w"><input id="trip-km" type="text" inputmode="decimal" readonly placeholder="Tự tính"><em>km</em></span><span class="sec-sub" id="trip-km-note" style="margin-top:4px"></span></label>
         <label class="fld"><span class="lab">Giờ bắt đầu chạy</span><span class="inp"><input id="trip-time" type="text" inputmode="numeric" placeholder="07:30"><em>giờ:phút</em></span></label>
@@ -2388,7 +2390,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var plate=normPlate(x.plate); if(!ID_RE.test(plate)) return null;
     var start=numOrNull(x.start), at=numOrNull(x.at); if(start==null) return null;
     var km=(x.km==null||x.km==='')?null:Number(x.km); if(km!=null&&(!isFinite(km)||km<0)) km=null;
-    return {id:String(id),plate:plate,driver:String(x.driver==null?'':x.driver).slice(0,60),from:String(x.from==null?'':x.from).slice(0,120),to:String(x.to==null?'':x.to).slice(0,120),km:km,round:x.round===true||x.round===1||x.round==='1',start:start,at:at==null?start:at};
+    return {id:String(id),plate:plate,driver:String(x.driver==null?'':x.driver).slice(0,60),from:String(x.from==null?'':x.from).slice(0,120),to:String(x.to==null?'':x.to).slice(0,120),km:km,round:x.round===true||x.round===1||x.round==='1',alt:Math.max(0,Math.min(2,Number(x.alt)||0)),via:String(x.via==null?'':x.via).slice(0,80),start:start,at:at==null?start:at};
   }
   function nowNaive(){return Date.now()-new Date().getTimezoneOffset()*60000;}
   function dmyFull(ms){var d=new Date(ms);return p2(d.getUTCDate())+'/'+p2(d.getUTCMonth()+1)+'/'+d.getUTCFullYear();}
@@ -2483,7 +2485,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
 
   /* km chuyến đi: tuyến đã lưu hoặc Google Maps (máy chủ tính) */
-  var tripKm=null, tripKmSeq=0, tripKmTimer=null, tripBase=null, tripWay=1;
+  var tripKm=null, tripKmSeq=0, tripKmTimer=null, tripBase=null, tripWay=1, tripAlts=[], tripAlt=0, lastCalc='';
   function setTripKm(v,note){tripBase=v;tripKm=v==null?null:Math.round(v*tripWay*10)/10;$('trip-km').value=tripKm==null?'':numToInput(tripKm);$('trip-km-note').textContent=(note||'')+(note&&tripWay===2&&v!=null?' Đã nhân đôi (đi và về).':'');}
   $('trip-way').addEventListener('click',function(e){
     var b=e.target.closest?e.target.closest('button[data-way]'):null; if(!b) return;
@@ -2496,8 +2498,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!f||!t) return null;
     return routes.filter(function(r){return r.from.trim().toLowerCase()===f&&r.to.trim().toLowerCase()===t;})[0]||null;
   }
+  function renderAlts(){
+    var w=$('trip-alts');
+    if(!tripAlts.length){w.hidden=true;w.innerHTML='';return;}
+    w.hidden=false;
+    w.innerHTML='<span class="lab">Chọn đường đi'+(tripAlts.length>1?' ('+tripAlts.length+' lựa chọn từ Google Maps)':' (Google Maps)')+'</span><div class="alts" role="radiogroup">'+tripAlts.map(function(a,i){
+      return '<button type="button" class="alt-opt" role="radio" aria-checked="'+(i===tripAlt)+'" data-alt="'+i+'"><span><b>'+(a.via?'Qua '+esc(a.via):'Đường '+(i+1))+'</b>'+(i===0?' <small>· Tuyến tốt nhất</small>':'')+'</span><span class="r"><b>'+nf1.format(a.km)+' km</b>'+(a.min!=null?' <small>· '+(a.min>=60?Math.floor(a.min/60)+' giờ '+(a.min%60)+' phút':a.min+' phút')+'</small>':'')+'</span></button>';
+    }).join('')+'</div>';
+  }
+  $('trip-alts').addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('button[data-alt]'):null; if(!b) return;
+    tripAlt=Number(b.getAttribute('data-alt'));var a=tripAlts[tripAlt]; if(!a) return;
+    renderAlts();setTripKm(a.km,a.via?'Đường qua '+a.via+'.':'Đường đã chọn.');
+  });
+  function clearAlts(){tripAlts=[];tripAlt=0;renderAlts();}
   function calcTripKm(){
-    var from=$('trip-from').value.trim(), to=$('trip-to').value.trim(), seq=++tripKmSeq;
+    var from=$('trip-from').value.trim(), to=$('trip-to').value.trim();
+    if(from&&to&&lastCalc===from+'|'+to&&(tripAlts.length||tripBase!=null)) return;
+    lastCalc=from&&to?from+'|'+to:'';
+    var seq=++tripKmSeq;
+    clearAlts();
     if(!from||!to){setTripKm(null,'');return;}
     var r=matchRoute(from,to);
     if(r){setTripKm(r.km,'Theo tuyến đã lưu: '+r.name);return;}
@@ -2505,7 +2525,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setTripKm(null,'Đang tính km theo Google Maps…');
     db.routeKm(from,to).then(function(j){
       if(seq!==tripKmSeq) return;
-      if(j&&j.km!=null) setTripKm(j.km,j.src==='preset'?'Theo tuyến đã lưu.':'Ước tính theo Google Maps.');
+      if(j&&j.km!=null){if(j.alts&&j.alts.length){tripAlts=j.alts;tripAlt=0;renderAlts();setTripKm(j.alts[0].km,j.alts[0].via?'Đường qua '+j.alts[0].via+'.':'Theo Google Maps.');}else setTripKm(j.km,j.src==='preset'?'Theo tuyến đã lưu.':'Ước tính theo Google Maps.');}
       else setTripKm(null,'Chưa tính được km. Hãy ghi rõ địa chỉ hơn hoặc báo quản lý.');
     }).catch(function(){if(seq===tripKmSeq) setTripKm(null,'Chưa tính được km, hãy kiểm tra mạng.');});
   }
@@ -2514,7 +2534,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var r=routes[Number(this.value)];
     if(!r||this.value===''){return;}
     $('trip-from').value=r.from;$('trip-to').value=r.to;
-    tripKmSeq++;setTripKm(r.km,'Theo tuyến đã lưu: '+r.name);
+    lastCalc='';tripKmSeq++;clearAlts();setTripKm(r.km,'Theo tuyến đã lưu: '+r.name);
   });
   ['trip-from','trip-to'].forEach(function(id){
     $(id).addEventListener('input',function(){$('trip-route').value='';schedTripKm();});
@@ -2548,7 +2568,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('trip-count').textContent=list.length+' chuyến'+(anyKm?', '+nfK.format(sumKm)+' km':'');
     $('trip-body').innerHTML=list.length?list.map(function(t){
       var asking=tripConfirm===t.id;
-      return '<tr><td class="num">'+dmyFull(t.start)+' '+fmtClock(t.start)+'</td><td><span class="plate-sm">'+esc(fmtPlate(t.plate))+'</span></td><td>'+esc(t.driver)+'</td><td class="wrap">'+esc(t.from)+'</td><td class="wrap">'+esc(t.to)+'</td><td class="num">'+tripKmCell(t)+'</td><td class="num">'+atTxt(t.at)+'</td>'+
+      return '<tr><td class="num">'+dmyFull(t.start)+' '+fmtClock(t.start)+'</td><td><span class="plate-sm">'+esc(fmtPlate(t.plate))+'</span></td><td>'+esc(t.driver)+'</td><td class="wrap">'+esc(t.from)+'</td><td class="wrap">'+esc(t.to)+(t.via?'<br><small style="color:var(--muted)">qua '+esc(t.via)+'</small>':'')+'</td><td class="num">'+tripKmCell(t)+'</td><td class="num">'+atTxt(t.at)+'</td>'+
         '<td><button class="mbtn" type="button" data-del="'+esc(t.id)+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
     }).join(''):'<tr><td class="empty" colspan="8">Chưa có chuyến đi nào trong '+mLabel(month).toLowerCase()+'. Ghi chuyến đầu tiên ở phía trên.</td></tr>';
   }
@@ -2556,7 +2576,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     await ready;
     setStatus('saving');
     try{
-      if(mode==='db') await db.doc('trips/'+t.id).set({plate:t.plate,driver:t.driver,from:t.from,to:t.to,km:t.km==null?null:t.km,round:!!t.round,start:t.start,at:t.at});
+      if(mode==='db') await db.doc('trips/'+t.id).set({plate:t.plate,driver:t.driver,from:t.from,to:t.to,km:t.km==null?null:t.km,round:!!t.round,alt:t.alt||0,via:t.via||'',start:t.start,at:t.at});
       else persistLocal();
       if(tripPending.get(t.id)===t) tripPending.delete(t.id);
       setStatus('saved');
@@ -2589,9 +2609,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var nd=new Date(nowNaive());
     var start=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate(),hmv.h,hmv.mi);
     tripErr('');
-    var t={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,driver:driver.slice(0,60),from:from.slice(0,120),to:to.slice(0,120),km:tripKm,round:tripWay===2,start:start,at:Date.now()};
+    var t={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,driver:driver.slice(0,60),from:from.slice(0,120),to:to.slice(0,120),km:tripKm,round:tripWay===2,alt:tripAlt,via:(tripAlts[tripAlt]&&tripAlts[tripAlt].via)||'',start:start,at:Date.now()};
     trips[t.id]=t;tripPending.set(t.id,t);
-    $('trip-from').value='';$('trip-to').value='';$('trip-route').value='';tripKmSeq++;setTripKm(null,'');tripWay=1;Array.prototype.forEach.call($('trip-way').querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',String(x.getAttribute('data-way')==='1'));});fillNow();
+    $('trip-from').value='';$('trip-to').value='';$('trip-route').value='';lastCalc='';tripKmSeq++;clearAlts();setTripKm(null,'');tripWay=1;Array.prototype.forEach.call($('trip-way').querySelectorAll('button'),function(x){x.setAttribute('aria-pressed',String(x.getAttribute('data-way')==='1'));});fillNow();
     renderTrips();renderSum();
     writeTrip(t);
     $('trip-from').focus();
