@@ -265,7 +265,7 @@ html.locked .tabs,html.locked .tabpanel,html.locked #monthbar,html.locked #who{d
 .login-foot{margin:0;text-align:center;font-size:14px;color:var(--muted)}
 .who{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;font-size:14px;color:var(--muted)}
 .who b{color:var(--ink)}
-html:not(.role-quanly) .only-q{display:none!important}
+html:not(.role-quanly):not(.role-totruong) .only-q{display:none!important}
 html:not(.role-quanly) [data-del],html:not(.role-quanly) [data-mdel],html:not(.role-quanly) [data-rdel],html:not(.role-quanly) #manage,html:not(.role-quanly) #fillprev{display:none!important}
 html.role-ketoan .wform{display:none!important}
 html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
@@ -719,7 +719,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <div class="panel" id="acct-me" style="margin-bottom:12px"></div>
     </section>
     <section class="only-q" aria-label="Quản lý tài khoản">
-      <div class="sec-head"><h2>Quản lý tài khoản</h2><p class="sec-sub">Quản lý: sửa tất cả. Kế toán: xem và xuất báo cáo. Tài xế: chỉ nhập sổ đổ dầu, hành trình, sửa chữa, bảo dưỡng. Đăng nhập chỉ cần ID.</p></div>
+      <div class="sec-head"><h2>Quản lý tài khoản</h2><p class="sec-sub">Quản trị cao nhất: toàn quyền, kể cả tài khoản quản lý. Quản lý: sửa mọi số liệu và các tài khoản khác. Kế toán, Nhân sự: xem và xuất báo cáo. Tổ trưởng tổ TX: nhập như tài xế, thêm bớt sửa tài khoản tài xế. Tài xế: chỉ nhập. Đăng nhập chỉ cần ID, không có mật khẩu nên hãy giữ kín ID.</p></div>
       <div class="scroll">
         <table class="trips" style="min-width:520px">
           <thead><tr><th>ID</th><th>Tên hiển thị</th><th>Vai trò</th><th></th></tr></thead>
@@ -729,7 +729,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <form class="panel tform" id="us-form" autocomplete="off" style="margin-top:12px">
         <label class="fld"><span class="lab">ID</span><input class="txt" id="us-id" type="text" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="Ví dụ: hung-taixe, lan-ketoan"></label>
         <label class="fld"><span class="lab">Tên hiển thị</span><input class="txt" id="us-name" type="text" maxlength="60" placeholder="Ví dụ: Nguyễn Văn Hùng"></label>
-        <label class="fld"><span class="lab">Vai trò</span><select class="txt" id="us-role"><option value="taixe">Tài xế</option><option value="ketoan">Kế toán</option><option value="quanly">Quản lý</option></select></label>
+        <label class="fld"><span class="lab">Vai trò</span><select class="txt" id="us-role"><option value="taixe">Tài xế</option></select></label>
         <div class="tform-act"><button class="btn" type="button" id="us-cancel" hidden>Hủy sửa</button><button class="btn primary" type="submit" id="us-save">Thêm tài khoản</button></div>
       </form>
       <p class="m-err" id="us-err" role="alert" hidden></p>
@@ -1430,7 +1430,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         fld('km','Số km trong tháng','km','0')+
         '<div class="fld f-actual"><span class="lab">Lít thực tế (từ sổ đổ dầu)</span><span class="inp ro"><b class="roval" id="act-'+id+'">—</b><em>lít</em></span></div>'+
       '</div>'+
-      '<div class="km-save"><button class="btn small primary" type="button" data-kmsave="'+id+'">'+(me&&me.role==='quanly'?'Lưu':'Lưu số km')+'</button><span class="km-note" id="kn-'+id+'"></span></div>'+
+      '<div class="km-save"><button class="btn small primary" type="button" data-kmsave="'+id+'">'+(me&&isMgr(me.role)?'Lưu':'Lưu số km')+'</button><span class="km-note" id="kn-'+id+'"></span></div>'+
       '<div class="veh-res">'+
         '<div class="res"><span class="lab">Lít theo định mức</span><span class="rv empty" id="rq-'+id+'">—</span></div>'+
         '<div class="res"><span class="lab">Thực tế L/100km</span><span class="rv empty" id="rr-'+id+'">—</span></div>'+
@@ -1485,7 +1485,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ---------- Hiển thị kết quả ---------- */
   function lockTaixe(){
-    if(!me||me.role!=='taixe') return;
+    if(!me||!isDrv(me.role)) return;
     vehicles.forEach(function(v){
       var id=v.id, el=$('km-'+id); if(!el) return;
       var x=rec[docId(month,id)], has=!!(x&&x.km!=null);
@@ -1744,7 +1744,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   function noteQ(id,txt,err){
-    if(!me||me.role!=='quanly') return;
+    if(!me||!isMgr(me.role)) return;
     var n=$('kn-'+String(id).split('_')[1]); if(!n) return;
     n.textContent=txt;n.className='km-note'+(err?' err':'');
   }
@@ -1813,7 +1813,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function onEdit(id){
     var parsed={},bad=false;
-    if(me&&me.role==='taixe'){
+    if(me&&isDrv(me.role)){
       var rk=parseNum($('km-'+id).value);
       $('w-km-'+id).classList.toggle('bad',!!rk.bad);
       var nn=$('kn-'+id); if(nn){delete nn.dataset.keep;nn.textContent=rk.bad?'Nhập số, ví dụ 757.':'';nn.className='km-note'+(rk.bad?' err':'');}
@@ -1897,7 +1897,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   rowsEl.addEventListener('click',async function(e){
     var b=e.target.closest&&e.target.closest('[data-kmsave]');
     if(!b||!me) return;
-    if(me.role==='quanly'){
+    if(isMgr(me.role)){
       var qid=b.getAttribute('data-kmsave'), qkey=docId(month,qid), qn=$('kn-'+qid);
       if($('w-km-'+qid).classList.contains('bad')||$('w-rate-'+qid).classList.contains('bad')){qn.textContent='Có ô chưa phải số hợp lệ, hãy sửa rồi bấm Lưu.';qn.className='km-note err';return;}
       b.disabled=true;qn.textContent='Đang lưu…';qn.className='km-note';
@@ -1908,7 +1908,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       else{qn.textContent='Đã lưu lúc '+hhmm();qn.className='km-note';}
       return;
     }
-    if(me.role!=='taixe') return;
+    if(!isDrv(me.role)) return;
     var id=b.getAttribute('data-kmsave'), note=$('kn-'+id), r=parseNum($('km-'+id).value);
     function say(t,err,keep){note.textContent=t;note.className='km-note'+(err?' err':'');if(keep) note.dataset.keep='1'; else delete note.dataset.keep;}
     if(r.empty||r.bad||!(r.v>0)){say('Nhập số km hợp lệ, ví dụ 757.',true);return;}
@@ -2393,7 +2393,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('dl-places').innerHTML=uniqSorted(all.map(function(t){return t.from;}).concat(all.map(function(t){return t.to;}))).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
   }
   function syncDriver(){
-    if(me&&me.role==='taixe'){$('trip-driver').value=me.name;$('trip-driver').readOnly=true;return;}
+    if(me&&isDrv(me.role)){$('trip-driver').value=me.name;$('trip-driver').readOnly=true;return;}
     if(driverTouched) return;
     var v=vehicles.filter(function(x){return x.id===$('trip-plate').value;})[0];
     $('trip-driver').value=v?v.driver:'';
@@ -3380,22 +3380,32 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   Array.prototype.forEach.call(document.querySelectorAll('.tab[data-tab]'),function(b){b.addEventListener('click',function(){setTab(b.getAttribute('data-tab'));});});
 
   /* ---------- Đăng nhập và phân quyền ---------- */
-  var ROLE_TXT={quanly:'Quản lý',ketoan:'Kế toán',taixe:'Tài xế'};
-  var PERM={edit:['quanly'],add:['quanly','taixe'],del:['quanly'],exp:['quanly','ketoan'],fuel:['quanly','ketoan','taixe'],sum:['quanly','ketoan'],adsun:['quanly','ketoan']};
+  var ROLE_TXT={admin:'Quản trị cao nhất',quanly:'Quản lý',ketoan:'Kế toán',nhansu:'Nhân sự',totruong:'Tổ trưởng tổ TX',taixe:'Tài xế'};
+  // admin = quản lý + quyền với cả tài khoản quản lý | nhansu = như kế toán | totruong = như tài xế + quản lý tài khoản tài xế
+  var PERM={edit:['admin','quanly'],add:['admin','quanly','totruong','taixe'],del:['admin','quanly'],exp:['admin','quanly','ketoan','nhansu'],fuel:['admin','quanly','ketoan','nhansu','totruong','taixe'],sum:['admin','quanly','ketoan','nhansu'],adsun:['admin','quanly','ketoan','nhansu'],acct:['admin','quanly','totruong']};
+  function isMgr(r){return r==='admin'||r==='quanly';}
+  function isDrv(r){return r==='taixe'||r==='totruong';}
+  function canManage(actor,target){
+    if(actor==='admin') return true;
+    if(actor==='quanly') return target!=='admin';
+    if(actor==='totruong') return target==='taixe';
+    return false;
+  }
   var me=null, authApi=null, SESSION_KEY='phucan-session', USERS_KEY='phucan-users';
-  var FIRST_ID='vanthuan', FIRST_NAME='Văn Thuận';
+  var FIRST_ID='vanthuan0304', OLD_FIRST_ID='vanthuan', FIRST_NAME='Văn Thuận';
   function can(a){return !!me&&(PERM[a]||[]).indexOf(me.role)>=0;}
   function normId(x){return String(x==null?'':x).trim().toLowerCase();}
   function idOk(x){return /^[a-z0-9][a-z0-9-]{2,29}$/.test(x);}
   function pubUser(id,u){return {id:id,name:u.name||id,role:ROLE_TXT[u.role]?u.role:'taixe'};}
   function guardUsers(list,uid,change){
     // không để mất quản lý cuối cùng
-    var qs=list.filter(function(u){return u.role==='quanly';});
+    var ads=list.filter(function(u){return u.role==='admin';});
     if(change==='del'&&me&&uid===me.id) throw {code:'self'};
     var u=list.filter(function(x){return x.id===uid;})[0];
-    if(u&&u.role==='quanly'&&qs.length<=1&&(change==='del'||change==='demote')) throw {code:'last'};
+    if(u&&!canManage(me?me.role:'',u.role)) throw {code:'forbidden'};
+    if(u&&u.role==='admin'&&ads.length<=1&&(change==='del'||change==='demote')) throw {code:'last'};
   }
-  var AUTH_ERR={unauthorized:'ID này chưa có. Hãy hỏi quản lý để được cấp ID.',locked:'Thử sai quá nhiều lần. Hãy thử lại sau ít phút.',self:'Không thể xóa chính tài khoản đang đăng nhập.',last:'Phải còn ít nhất một tài khoản quản lý.',exists:'ID này đã có.',badid:'ID gồm 3 đến 30 ký tự: chữ thường, số, dấu gạch ngang.',forbidden:'Tài khoản này không có quyền làm việc đó.'};
+  var AUTH_ERR={unauthorized:'ID này chưa có. Hãy hỏi quản lý để được cấp ID.',locked:'Thử sai quá nhiều lần. Hãy thử lại sau ít phút.',self:'Không thể xóa chính tài khoản đang đăng nhập.',last:'Phải còn ít nhất một tài khoản quản trị cao nhất.',exists:'ID này đã có.',badid:'ID gồm 3 đến 30 ký tự: chữ thường, số, dấu gạch ngang.',forbidden:'Tài khoản này không có quyền làm việc đó.'};
   function authMsg(e){return AUTH_ERR[e&&e.code]||'Chưa thực hiện được. Hãy kiểm tra mạng rồi thử lại.';}
   function makeLocalAuth(store){
     var cache={};
@@ -3403,7 +3413,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return {
       init:async function(){
         cache=await store.load();
-        if(!Object.keys(cache).length){cache[FIRST_ID]={name:FIRST_NAME,role:'quanly'};await store.put(FIRST_ID,cache[FIRST_ID]);}
+        // luôn có tài khoản quản trị cao nhất; ID cũ 'vanthuan' được đổi tên thành ID mới
+        if(!cache[FIRST_ID]){
+          var old=cache[OLD_FIRST_ID];
+          cache[FIRST_ID]={name:old?old.name:FIRST_NAME,role:'admin'};
+          if(old){delete cache[OLD_FIRST_ID];try{await store.del(OLD_FIRST_ID);}catch(e){}}
+          await store.put(FIRST_ID,cache[FIRST_ID]);
+        }else if(cache[FIRST_ID].role!=='admin'){cache[FIRST_ID].role='admin';await store.put(FIRST_ID,cache[FIRST_ID]);}
       },
       resume:async function(){var id='';try{id=localStorage.getItem(SESSION_KEY)||'';}catch(e){}return cache[id]?pubUser(id,cache[id]):null;},
       login:async function(id){
@@ -3416,9 +3432,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       users:async function(){cache=await store.load();return list();},
       saveUser:async function(d){
         var id=normId(d.id);if(!idOk(id)) throw {code:'badid'};
-        if(!ROLE_TXT[d.role]) throw {code:'forbidden'};
+        if(!ROLE_TXT[d.role]||!me||!canManage(me.role,d.role)) throw {code:'forbidden'};
         var old=cache[id];
-        if(old&&old.role==='quanly'&&d.role!=='quanly') guardUsers(list(),id,'demote');
+        if(old) guardUsers(list(),id,old.role==='admin'&&d.role!=='admin'?'demote':'edit');
         var u={name:String(d.name||id).trim().slice(0,60)||id,role:d.role};
         cache[id]=u;await store.put(id,u);return list();
       },
@@ -3460,14 +3476,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   function applyRole(){
     var h=document.documentElement;
-    h.classList.remove('role-quanly','role-ketoan','role-taixe');
+    ['admin','quanly','ketoan','nhansu','totruong','taixe'].forEach(function(r){h.classList.remove('role-'+r);});
     h.classList.add('role-'+me.role);
-    $('rows').inert=!(can('edit')||me.role==='taixe');lockTaixe();
-    Array.prototype.forEach.call(document.querySelectorAll('[data-kmsave]'),function(bn){bn.textContent=me.role==='quanly'?'Lưu':'Lưu số km';});
+    // quản trị cao nhất dùng giao diện của quản lý, nhân sự như kế toán, tổ trưởng như tài xế
+    h.classList.add(me.role==='admin'?'role-quanly':me.role==='nhansu'?'role-ketoan':me.role==='totruong'?'role-taixe':'role-'+me.role);
+    $('rows').inert=!(can('edit')||isDrv(me.role));lockTaixe();
+    Array.prototype.forEach.call(document.querySelectorAll('[data-kmsave]'),function(bn){bn.textContent=isMgr(me.role)?'Lưu':'Lưu số km';});
     var rb=$('rf-by'); if(rb){rb.value=me.name||me.id;rb.readOnly=!can('edit');}
     $('who').hidden=false;
     $('who-txt').innerHTML='Xin chào, <b>'+esc(me.name)+'</b> · '+ROLE_TXT[me.role];
-    if(me.role==='taixe'){driverTouched=false;syncDriver();}
+    if(isDrv(me.role)){driverTouched=false;syncDriver();}
     else $('trip-driver').readOnly=false;
   }
   function enterApp(u){
@@ -3479,14 +3497,23 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function renderAcct(){
     if(!me) return;
     $('acct-me').innerHTML='<div><b>'+esc(me.name)+'</b></div><div class="sec-sub">ID: '+esc(me.id)+' · '+ROLE_TXT[me.role]+'</div>';
-    if(can('edit')) loadUsers();
+    fillRoleSelect();
+    if(can('acct')) loadUsers();
   }
+  function fillRoleSelect(){
+    var sel=$('us-role'); if(!sel||!me) return;
+    var cur=sel.value;
+    var order=['taixe','totruong','ketoan','nhansu','quanly','admin'];
+    sel.innerHTML=order.filter(function(r){return canManage(me.role,r);}).map(function(r){return '<option value="'+r+'">'+ROLE_TXT[r]+'</option>';}).join('');
+    if(cur&&canManage(me.role,cur)) sel.value=cur;
+  }
+  function visibleUser(u){return canManage(me.role,u.role);}
   async function loadUsers(){
     try{usList=await authApi.users();}catch(e){usList=[];}
     renderUsers();
   }
   function renderUsers(){
-    $('us-body').innerHTML=usList.map(function(u){
+    $('us-body').innerHTML=usList.filter(visibleUser).map(function(u){
       return '<tr><td><b>'+esc(u.id)+'</b></td><td>'+esc(u.name)+'</td><td>'+ROLE_TXT[u.role]+'</td><td><button class="mbtn" type="button" data-uedit="'+esc(u.id)+'">Sửa</button> <button class="mbtn" type="button" data-udel="'+esc(u.id)+'">'+(usConfirm===u.id?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
     }).join('')||'<tr><td class="empty" colspan="4">Chưa có tài khoản nào.</td></tr>';
   }
@@ -3496,7 +3523,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('us-save').textContent='Thêm tài khoản';$('us-cancel').hidden=true;
   }
   $('us-form').addEventListener('submit',async function(e){
-    e.preventDefault();if(!can('edit')) return;showErrEl('us-err','');
+    e.preventDefault();if(!can('acct')) return;showErrEl('us-err','');
     var d={id:$('us-id').value,name:$('us-name').value,role:$('us-role').value};
     if(!normId(d.id)){showErrEl('us-err','Nhập ID.');return;}
     if(!usEditing&&usList.some(function(u){return u.id===normId(d.id);})){showErrEl('us-err',AUTH_ERR.exists);return;}
@@ -3505,7 +3532,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
   $('us-cancel').addEventListener('click',usReset);
   $('us-body').addEventListener('click',async function(e){
-    var b=e.target.closest&&e.target.closest('button'); if(!b||!can('edit')) return;
+    var b=e.target.closest&&e.target.closest('button'); if(!b||!can('acct')) return;
     var ed=b.getAttribute('data-uedit'), dl2=b.getAttribute('data-udel');
     if(ed){
       var u=usList.filter(function(x){return x.id===ed;})[0]; if(!u) return;
