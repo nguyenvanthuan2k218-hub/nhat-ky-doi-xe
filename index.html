@@ -308,7 +308,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
 .listbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .listbar .txt{width:auto;min-width:150px}
 .sumbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
-.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
+.ivbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 16px}@media(max-width:700px){.ivbar{grid-template-columns:1fr}}.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{border:0;background:none;color:var(--ink);padding:8px 16px;font-weight:600;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line-strong)}
@@ -795,6 +795,23 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           <tbody id="sum-year-body"></tbody>
         </table>
       </div>
+    </section>
+    <section id="iv-sec" aria-label="Đối chiếu giữa các lần đổ dầu" style="margin-top:28px">
+      <div class="sec-head"><h2>Đối chiếu giữa các lần đổ dầu</h2></div>
+      <p class="sec-sub" style="margin-top:-6px">Số km lấy từ Sổ hành trình, lít thực đổ lấy từ Sổ đổ dầu. Lượng dầu đổ ở lần sau được tính cho quãng đường từ lần đổ trước đến lần đổ đó, vì vậy nên đổ đầy bình mỗi lần.</p>
+      <div class="ivbar">
+        <label class="fld"><span class="lab">Xe</span><select class="txt" id="iv-plate"></select></label>
+        <label class="fld"><span class="lab">Từ lần đổ dầu</span><select class="txt" id="iv-from"></select></label>
+        <label class="fld"><span class="lab">Đến lần đổ dầu</span><select class="txt" id="iv-to"></select></label>
+      </div>
+      <section class="strip" id="iv-strip" aria-label="Kết quả đối chiếu"></section>
+      <div class="scroll">
+        <table id="iv-table" style="min-width:900px">
+          <thead><tr><th>Xe</th><th>Từ ngày</th><th>Đến ngày</th><th>Số chuyến</th><th>Số km</th><th>Lít theo định mức</th><th>Lít thực đổ</th><th>Chênh lệch (lít)</th><th>Chênh lệch (%)</th><th>TB thực tế (L/100km)</th></tr></thead>
+          <tbody id="iv-body"></tbody>
+        </table>
+      </div>
+      <p class="sec-sub" id="iv-note" style="margin-top:8px"></p>
     </section>
   </div>
 </div>
@@ -3223,6 +3240,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       body=cur.rows.map(function(r){return row('<span class="plate-sm">'+esc(fmtPlate(r.id))+'</span>',r);}).join('')+row('Cả đội',T,'tot');
       $('sum-note').textContent='Chênh lệch và mức trung bình chỉ tính các tháng của xe có đủ số km, định mức và lít thực tế.';
     }
+    renderIv();
     $('sum-head').innerHTML=head;
     $('sum-body').innerHTML=vehicles.length?body:'<tr><td class="empty" colspan="8">Chưa có xe nào trong danh sách.</td></tr>';
     var yb=$('sum-year');
@@ -3240,6 +3258,86 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('sum-prev').addEventListener('click',function(){sumAnchor=shiftAnchor(sumType,sumAnchor==null?dayStart(nowNaive()):sumAnchor,-1);renderSum();});
   $('sum-next').addEventListener('click',function(){sumAnchor=shiftAnchor(sumType,sumAnchor==null?dayStart(nowNaive()):sumAnchor,1);renderSum();});
   $('sum-today').addEventListener('click',function(){sumAnchor=dayStart(nowNaive());renderSum();});
+
+
+  /* ---------- Đối chiếu giữa các lần đổ dầu ---------- */
+  function ivGroups(plate){
+    var by={};
+    Object.keys(refuel).forEach(function(k){
+      var x=refuel[k]; if(!x||normPlate(x.plate)!==plate) return;
+      var d=Math.floor(dayStart(x.date)/864e5);
+      by[d]=(by[d]||0)+x.liters;
+    });
+    return Object.keys(by).map(Number).sort(function(a,b){return a-b;}).map(function(d){return {day:d,liters:by[d]};});
+  }
+  function ivRate(plate,month){
+    var R=RV(), ms=Object.keys(R).filter(function(k){var x=R[k];return normPlate(x.plate)===plate&&x.rate!=null&&x.month<=month;}).map(function(k){return R[k];}).sort(function(a,b){return a.month<b.month?1:-1;});
+    return ms.length?ms[0].rate:null;
+  }
+  function ivLeg(plate,d0,d1,liters){
+    var o={plate:plate,d0:d0,d1:d1,trips:0,km:0,noKm:0,Q:0,noRate:0,A:liters};
+    Object.keys(trips).forEach(function(k){
+      var t=trips[k]; if(t.plate!==plate) return;
+      var d=Math.floor(dayStart(t.start)/864e5); if(d<=d0||d>d1) return;
+      o.trips++;
+      if(t.km==null){o.noKm++;return;}
+      o.km+=t.km;
+      var r=ivRate(plate,monthOfMs(t.start));
+      if(r==null) o.noRate+=t.km; else o.Q+=t.km*r/100;
+    });
+    var kq=o.km-o.noRate;
+    o.diff=(o.km>0&&o.noRate===0)?o.A-o.Q:null;
+    o.pct=(o.diff!=null&&o.Q>0)?o.diff/o.Q*100:null;
+    o.avg=o.km>0?o.A/o.km*100:null;
+    return o;
+  }
+  function ivSelOpts(sel,days,keep,lastDefault){
+    var cur=sel.value;
+    sel.innerHTML=days.map(function(d){return '<option value="'+d+'">'+dmyFull(d*864e5)+'</option>';}).join('');
+    if(cur&&days.indexOf(Number(cur))>=0) sel.value=cur; else if(days.length) sel.value=String(lastDefault?days[days.length-1]:days[0]);
+  }
+  function renderIv(){
+    var sec=$('iv-sec'); if(!sec) return;
+    var ps=$('iv-plate'), curP=ps.value||'*';
+    ps.innerHTML='<option value="*">Tất cả các xe</option>'+vehicles.map(function(v){return '<option value="'+esc(v.id)+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
+    ps.value=(curP==='*'||vehicles.some(function(v){return v.id===curP;}))?curP:'*';
+    var plates=ps.value==='*'?vehicles.map(function(v){return v.id;}):[ps.value];
+    var all={};plates.forEach(function(pl){ivGroups(pl).forEach(function(g){all[g.day]=1;});});
+    var days=Object.keys(all).map(Number).sort(function(a,b){return a-b;});
+    var fs=$('iv-from'), ts=$('iv-to'), pf=fs.value, pt=ts.value;
+    ivSelOpts(fs,days,pf,false);ivSelOpts(ts,days,pt,true);
+    if(Number(fs.value)>Number(ts.value)&&days.length) fs.value=String(days[0]);
+    var F=Number(fs.value), Tt=Number(ts.value), rows=[], T={trips:0,km:0,noKm:0,Q:0,noRate:0,A:0,legs:0,over:0,ck:0,cq:0,ca:0}, short=[];
+    plates.forEach(function(pl){
+      var g=ivGroups(pl), bi=-1,ei=-1;
+      g.forEach(function(x,i){if(x.day<=F) bi=i; if(x.day<=Tt) ei=i;});
+      if(bi<0&&g.length&&g[0].day<=Tt&&g.length>1) bi=0;
+      if(bi<0||ei<=bi){short.push(pl);return;}
+      for(var i=bi+1;i<=ei;i++){
+        var L=ivLeg(pl,g[i-1].day,g[i].day,g[i].liters);
+        rows.push(L);T.legs++;T.trips+=L.trips;T.km+=L.km;T.noKm+=L.noKm;T.Q+=L.Q;T.noRate+=L.noRate;T.A+=L.A;
+        if(L.diff!=null){T.ck+=L.km;T.cq+=L.Q;T.ca+=L.A;}
+        if(L.pct!=null&&L.pct>threshold) T.over++;
+      }
+    });
+    var okAll=T.cq>0, diff=okAll?T.ca-T.cq:null, pct=okAll?diff/T.cq*100:null;
+    function stat(k,v,u){return '<div class="stat"><span class="k">'+k+'</span><span class="v">'+v+'</span><span class="u">'+u+'</span></div>';}
+    $('iv-strip').innerHTML=
+      stat('Quãng đường',T.legs?nfK.format(T.km)+' km':'—',T.legs?T.trips+' chuyến, '+T.legs+' chặng giữa các lần đổ':'chưa đủ 2 lần đổ dầu')+
+      stat('Lít thực đổ',T.legs?nf1.format(T.A)+' lít':'—',T.legs?'theo định mức '+(okAll?nf1.format(T.cq)+' lít (các chặng có đủ km)':'chưa đủ'):'')+
+      stat('Chênh lệch so với định mức',pct!=null?pctTxt(pct):'—',pct!=null?(Math.abs(diff)<0.05?'khớp định mức':(diff>0?'đổ nhiều hơn ':'đổ ít hơn ')+nf1.format(Math.abs(diff))+' lít')+(T.over?', '+T.over+' chặng vượt ngưỡng '+nf2.format(threshold)+'%':''):'cần đủ km và định mức')+
+      stat('TB thực tế',T.ck>0?nf1.format(T.ca/T.ck*100)+' L/100km':'—','lít trên 100 km');
+    $('iv-body').innerHTML=rows.length?rows.map(function(L){
+      return '<tr><td><span class="plate-sm">'+esc(fmtPlate(L.plate))+'</span></td><td class="num">'+dmyFull(L.d0*864e5)+'</td><td class="num">'+dmyFull(L.d1*864e5)+'</td><td class="num">'+L.trips+(L.noKm?' <small style="color:var(--muted)">('+L.noKm+' chưa có km)</small>':'')+'</td><td class="num">'+(L.km>0?nfK.format(L.km):'—')+'</td><td class="num">'+(L.diff!=null?nf1.format(L.Q):'—')+'</td><td class="num">'+nf1.format(L.A)+'</td><td class="num">'+(L.diff!=null?nfS.format(L.diff):'—')+'</td><td>'+chipPct(L.pct)+'</td><td class="num">'+(L.avg!=null?nf1.format(L.avg):'—')+'</td></tr>';
+    }).join('')+'<tr class="tot"><td>Tổng</td><td></td><td></td><td class="num">'+T.trips+'</td><td class="num">'+(T.km>0?nfK.format(T.km):'—')+'</td><td class="num">'+(okAll?nf1.format(T.cq):'—')+'</td><td class="num">'+nf1.format(T.A)+'</td><td class="num">'+(diff!=null?nfS.format(diff):'—')+'</td><td>'+chipPct(pct)+'</td><td class="num">'+(T.ck>0?nf1.format(T.ca/T.ck*100):'—')+'</td></tr>':'<tr><td class="empty" colspan="10">Chưa có chặng nào. Cần ít nhất 2 lần đổ dầu của xe trong khoảng đã chọn.</td></tr>';
+    var notes=[];
+    if(short.length&&plates.length>1) notes.push('Chưa đủ 2 lần đổ dầu trong khoảng này: '+short.map(fmtPlate).join(', ')+'.');
+    if(T.noRate>0) notes.push('Có chuyến chưa có định mức của tháng tương ứng nên chưa tính được chênh lệch.');
+    if(T.noKm>0) notes.push('Có '+T.noKm+' chuyến chưa có số km nên chưa được cộng vào quãng đường.');
+    notes.push('Chênh lệch chỉ tính các chặng có đủ km và định mức. Chuyến được tính vào chặng từ ngày sau lần đổ trước đến hết ngày của lần đổ sau.');
+    $('iv-note').textContent=notes.join(' ');
+  }
+  ['iv-plate','iv-from','iv-to'].forEach(function(id){$(id).addEventListener('change',renderIv);});
 
   /* ---------- Xuất Excel ---------- */
   var XG='FF138A42', XSOFT='FFE3F1E7', XZEB='FFF4F9F5', XLINE='FFC9D8CD', XINK='FF0F2A1B', XMUTED='FF5B7566';
