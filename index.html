@@ -266,6 +266,9 @@ html.locked .tabs,html.locked .tabpanel,html.locked #monthbar,html.locked #who{d
 .who{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;font-size:14px;color:var(--muted)}
 .who b{color:var(--ink)}
 html:not(.role-quanly):not(.role-totruong) .only-q{display:none!important}
+html:not(.role-admin) .only-admin,html.role-taixe .tripkm{display:none!important}
+.tripkm{font-size:13px;color:var(--muted);font-weight:600}
+.kmcell{width:88px;border:1px solid var(--line-strong);border-radius:6px;background:var(--field);color:var(--ink);font-family:var(--f-mono);font-size:14px;padding:4px 6px;text-align:right}
 html:not(.role-quanly) [data-del],html:not(.role-quanly) [data-mdel],html:not(.role-quanly) [data-rdel],html:not(.role-quanly) #manage,html:not(.role-quanly) #fillprev{display:none!important}
 html.role-ketoan .wform{display:none!important}
 html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
@@ -581,12 +584,13 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <p class="sec-sub">Chỉ cần nhập giờ bắt đầu chạy. Ngày là ngày nhập, trang tự đặt theo giờ máy và không sửa được.</p>
       </div>
       <form class="panel tform" id="trip-form" autocomplete="off">
+        <label class="fld" style="grid-column:1/-1"><span class="lab">Tuyến đường phổ biến (chọn nhanh)</span><select class="txt" id="trip-route"><option value="">Chọn tuyến để tự điền nơi đi, nơi đến và số km, hoặc tự nhập bên dưới</option></select></label>
         <label class="fld"><span class="lab">Biển số xe</span><select class="txt" id="trip-plate"></select></label>
         <label class="fld"><span class="lab">Tài xế</span><input class="txt" id="trip-driver" type="text" list="dl-drivers" maxlength="60" placeholder="Tên tài xế"></label>
         <span class="fld"></span>
         <label class="fld"><span class="lab">Nơi đi</span><input class="txt" id="trip-from" type="text" list="dl-places" maxlength="120" placeholder="Ví dụ: Bệnh viện Phúc An"></label>
         <label class="fld"><span class="lab">Nơi đến</span><input class="txt" id="trip-to" type="text" list="dl-places" maxlength="120" placeholder="Ví dụ: Sở Y tế"></label>
-        <span class="fld"></span>
+        <label class="fld"><span class="lab">Quãng đường (một chiều)</span><span class="inp ro" id="trip-km-w"><input id="trip-km" type="text" inputmode="decimal" readonly placeholder="Tự tính"><em>km</em></span><span class="sec-sub" id="trip-km-note" style="margin-top:4px"></span></label>
         <label class="fld"><span class="lab">Giờ bắt đầu chạy</span><span class="inp"><input id="trip-time" type="text" inputmode="numeric" placeholder="07:30"><em>giờ:phút</em></span></label>
         <span class="fld"></span>
         <div class="tform-act"><button class="btn" type="button" id="trip-now">Lấy giờ hiện tại</button><button class="btn primary" type="submit">Ghi chuyến đi</button></div>
@@ -602,10 +606,28 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
       <div class="scroll">
         <table class="trips" style="min-width:760px">
-          <thead><tr><th>Bắt đầu chạy</th><th>Biển số</th><th>Tài xế</th><th>Nơi đi</th><th>Nơi đến</th><th>Ghi lúc</th><th></th></tr></thead>
+          <thead><tr><th>Bắt đầu chạy</th><th>Biển số</th><th>Tài xế</th><th>Nơi đi</th><th>Nơi đến</th><th>Km</th><th>Ghi lúc</th><th></th></tr></thead>
           <tbody id="trip-body"></tbody>
         </table>
       </div>
+    </section>
+
+    <section class="only-admin" aria-label="Tuyến đường phổ biến">
+      <div class="sec-head"><h2>Tuyến đường phổ biến</h2><p class="sec-sub">Chỉ quản trị cao nhất thấy và sửa mục này. Tài xế chọn tuyến để tự điền nơi đi, nơi đến và số km.</p></div>
+      <div class="scroll">
+        <table class="trips" style="min-width:640px">
+          <thead><tr><th>Tên tuyến</th><th>Nơi đi</th><th>Nơi đến</th><th>Km (một chiều)</th><th></th></tr></thead>
+          <tbody id="rt-body"></tbody>
+        </table>
+      </div>
+      <form class="panel tform" id="rt-form" autocomplete="off" style="margin-top:12px">
+        <label class="fld"><span class="lab">Tên tuyến</span><input class="txt" id="rt-name" type="text" maxlength="80" placeholder="Ví dụ: Bệnh viện đến Sở Y tế"></label>
+        <label class="fld"><span class="lab">Nơi đi</span><input class="txt" id="rt-from" type="text" list="dl-places" maxlength="120" placeholder="Địa chỉ càng rõ càng tốt"></label>
+        <label class="fld"><span class="lab">Nơi đến</span><input class="txt" id="rt-to" type="text" list="dl-places" maxlength="120" placeholder="Địa chỉ càng rõ càng tốt"></label>
+        <label class="fld"><span class="lab">Số km (một chiều)</span><span class="inp"><input id="rt-km" type="text" inputmode="decimal" placeholder="12,5"><em>km</em></span></label>
+        <div class="tform-act"><button class="btn" type="button" id="rt-cancel" hidden>Hủy sửa</button><button class="btn primary" type="submit" id="rt-save">Thêm tuyến</button></div>
+      </form>
+      <p class="m-err" id="rt-err" role="alert" hidden></p>
     </section>
 
   <section class="adsun" aria-label="Kiểm tra hành trình">
@@ -1297,7 +1319,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var rec={};              // 'YYYY-MM_ID' -> {month,plate,rate,km,actual}
   var vehicles=[];         // [{id,driver}]
   var threshold=10;
-  var idleMin=10, stopMin=60, places=[];
+  var idleMin=10, stopMin=60, places=[], routes=[];
   var unsaved=new Map(), timers=new Map(), chains=new Map();
   var cfgTimer=null, cfgPending=false, cfgChain=Promise.resolve();
   var db=null, dl=null, mode='init';
@@ -1424,7 +1446,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         '<span class="inp'+(cls||'')+'" id="w-'+field+'-'+id+'"><input id="'+field+'-'+id+'" data-p="'+id+'" data-f="'+field+'" type="text" inputmode="decimal" autocomplete="off" placeholder="'+ph+'" aria-label="'+label+', xe '+f+'"><em>'+unit+'</em></span></label>';
     }
     return '<div class="veh" data-p="'+id+'">'+
-      '<div class="veh-head"><span class="plate-chip">'+f+'</span><span class="driver" id="drv-'+id+'"></span></div>'+
+      '<div class="veh-head"><span class="plate-chip">'+f+'</span><span class="driver" id="drv-'+id+'"></span><span class="tripkm" id="tk-'+id+'"></span></div>'+
       '<div class="veh-grid">'+
         fld('rate','Định mức','L/100km','0,0')+
         fld('km','Số km trong tháng','km','0')+
@@ -1502,6 +1524,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var id=v.id; if(!$('rq-'+id)) return;
       var x=RV()[docId(month,id)];
       var bad=EDIT_FIELDS.some(function(f){return $('w-'+f+'-'+id).classList.contains('bad');});
+      var tkEl=$('tk-'+id); if(tkEl){var tk=0,tn=0;Object.keys(trips).forEach(function(k){var t=trips[k];if(t.plate===id&&t.km!=null&&monthOfMs(t.start)===month){tk+=t.km;tn++;}});tkEl.textContent=tn?('Sổ hành trình: '+nfK.format(tk)+' km ('+tn+' chuyến)'):'';}
       var av=$('act-'+id); if(av) av.textContent=(x&&x.actual!=null)?nf1.format(x.actual):'—';
       var q=bad?null:quotaL(x), vr=bad?null:variance(x), k=bad?null:effKm(x);
       var rq=$('rq-'+id), rr=$('rr-'+id), rd=$('rd-'+id), rp=$('rp-'+id);
@@ -1677,10 +1700,24 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('fillprev').hidden=!show;
   }
 
+  function cleanRoutes(a){
+    var out=[];
+    (Array.isArray(a)?a:[]).slice(0,60).forEach(function(r){
+      if(!r) return;
+      var km=Number(r.km);
+      var o={name:String(r.name||'').trim().slice(0,80),from:String(r.from||'').trim().slice(0,120),to:String(r.to||'').trim().slice(0,120),km:(isFinite(km)&&km>=0)?Math.round(km*10)/10:null};
+      if(o.name&&o.from&&o.to&&o.km!==null) out.push(o);
+    });
+    return out;
+  }
   function cleanExtra(d){
     var ch=false;
     if(typeof d.idleMin==='number'&&isFinite(d.idleMin)&&d.idleMin>0&&d.idleMin!==idleMin){idleMin=d.idleMin;ch=true;}
     if(typeof d.stopMin==='number'&&isFinite(d.stopMin)&&d.stopMin>0&&d.stopMin!==stopMin){stopMin=d.stopMin;ch=true;}
+    if(Array.isArray(d.routes)){
+      var rl2=cleanRoutes(d.routes);
+      if(JSON.stringify(rl2)!==JSON.stringify(routes)){routes=rl2;ch=true;}
+    }
     if(Array.isArray(d.places)){
       var pl=d.places.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,30);
       if(JSON.stringify(pl)!==JSON.stringify(places)){places=pl;ch=true;}
@@ -1722,7 +1759,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ---------- Lưu ---------- */
   function persistLocal(){
-    try{localStorage.setItem(LS_KEY,JSON.stringify({rec:rec,vehicles:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,trips:trips,maint:maint,refuel:refuel}));}catch(e){}
+    try{localStorage.setItem(LS_KEY,JSON.stringify({rec:rec,vehicles:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,routes:routes,trips:trips,maint:maint,refuel:refuel}));}catch(e){}
   }
   function loadLocal(){
     var ok=false;
@@ -1790,7 +1827,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setStatus('saving');
     try{
       if(mode==='db'){
-        await db.doc('config/main').set({list:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places});
+        await db.doc('config/main').set({list:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,routes:routes});
       }else persistLocal();
       setStatus('saved');
     }catch(e){setStatus('error',e);}
@@ -2349,7 +2386,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!x||typeof x!=='object') return null;
     var plate=normPlate(x.plate); if(!ID_RE.test(plate)) return null;
     var start=numOrNull(x.start), at=numOrNull(x.at); if(start==null) return null;
-    return {id:String(id),plate:plate,driver:String(x.driver==null?'':x.driver).slice(0,60),from:String(x.from==null?'':x.from).slice(0,120),to:String(x.to==null?'':x.to).slice(0,120),start:start,at:at==null?start:at};
+    var km=(x.km==null||x.km==='')?null:Number(x.km); if(km!=null&&(!isFinite(km)||km<0)) km=null;
+    return {id:String(id),plate:plate,driver:String(x.driver==null?'':x.driver).slice(0,60),from:String(x.from==null?'':x.from).slice(0,120),to:String(x.to==null?'':x.to).slice(0,120),km:km,start:start,at:at==null?start:at};
   }
   function nowNaive(){return Date.now()-new Date().getTimezoneOffset()*60000;}
   function dmyFull(ms){var d=new Date(ms);return p2(d.getUTCDate())+'/'+p2(d.getUTCMonth()+1)+'/'+d.getUTCFullYear();}
@@ -2398,23 +2436,120 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var v=vehicles.filter(function(x){return x.id===$('trip-plate').value;})[0];
     $('trip-driver').value=v?v.driver:'';
   }
+  function tripKmCell(t){
+    if(me&&me.role==='admin') return '<input class="kmcell" type="text" inputmode="decimal" data-tkm="'+esc(t.id)+'" value="'+(t.km!=null?numToInput(t.km):'')+'" placeholder="—" aria-label="Số km của chuyến, chỉ quản trị cao nhất sửa được">';
+    return t.km!=null?nf1.format(t.km):'—';
+  }
+  function renderRoutes(){
+    var sel=$('trip-route'); if(!sel) return;
+    var cur=sel.value;
+    sel.innerHTML='<option value="">Chọn tuyến để tự điền nơi đi, nơi đến và số km, hoặc tự nhập bên dưới</option>'+routes.map(function(r,i){return '<option value="'+i+'">'+esc(r.name)+' ('+nf1.format(r.km)+' km)</option>';}).join('');
+    if(cur!==''&&routes[Number(cur)]) sel.value=cur;
+    $('rt-body').innerHTML=routes.length?routes.map(function(r,i){
+      var asking=rtConfirm===i;
+      return '<tr><td class="wrap"><b>'+esc(r.name)+'</b></td><td class="wrap">'+esc(r.from)+'</td><td class="wrap">'+esc(r.to)+'</td><td class="num">'+nf1.format(r.km)+'</td><td><button class="mbtn" type="button" data-rtedit="'+i+'">Sửa</button> <button class="mbtn" type="button" data-rtdel="'+i+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
+    }).join(''):'<tr><td class="empty" colspan="5">Chưa có tuyến nào. Thêm tuyến thường đi ở bên dưới để tài xế chọn nhanh.</td></tr>';
+  }
+  var rtEditing=-1, rtConfirm=-1, rtConfirmT=null;
+  function rtReset(){rtEditing=-1;$('rt-name').value='';$('rt-from').value='';$('rt-to').value='';$('rt-km').value='';$('rt-save').textContent='Thêm tuyến';$('rt-cancel').hidden=true;}
+  function rtErr(m){var e=$('rt-err');e.textContent=m||'';e.hidden=!m;}
+  $('rt-form').addEventListener('submit',function(e){
+    e.preventDefault();
+    if(!me||me.role!=='admin') return;
+    var name=$('rt-name').value.trim(), from=$('rt-from').value.trim(), to=$('rt-to').value.trim(), k=parseNum($('rt-km').value);
+    if(!name){rtErr('Nhập tên tuyến.');return;}
+    if(!from||!to){rtErr('Nhập đủ nơi đi và nơi đến.');return;}
+    if(k.empty||k.bad){rtErr('Nhập số km hợp lệ, ví dụ 12,5.');return;}
+    rtErr('');
+    var r={name:name.slice(0,80),from:from.slice(0,120),to:to.slice(0,120),km:Math.round(k.v*10)/10};
+    if(rtEditing>=0) routes[rtEditing]=r; else routes.push(r);
+    rtReset();scheduleCfg();renderRoutes();
+  });
+  $('rt-cancel').addEventListener('click',rtReset);
+  $('rt-body').addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('button'); if(!b||!me||me.role!=='admin') return;
+    var ed=b.getAttribute('data-rtedit'), dl2=b.getAttribute('data-rtdel');
+    if(ed!=null){
+      var r=routes[Number(ed)]; if(!r) return;
+      rtEditing=Number(ed);$('rt-name').value=r.name;$('rt-from').value=r.from;$('rt-to').value=r.to;$('rt-km').value=numToInput(r.km);
+      $('rt-save').textContent='Lưu thay đổi';$('rt-cancel').hidden=false;$('rt-name').focus();return;
+    }
+    if(dl2!=null){
+      var i=Number(dl2);
+      if(rtConfirm!==i){rtConfirm=i;if(rtConfirmT) clearTimeout(rtConfirmT);rtConfirmT=setTimeout(function(){rtConfirm=-1;renderRoutes();},4000);renderRoutes();return;}
+      rtConfirm=-1;routes.splice(i,1);if(rtEditing===i) rtReset();scheduleCfg();renderRoutes();
+    }
+  });
+
+  /* km chuyến đi: tuyến đã lưu hoặc Google Maps (máy chủ tính) */
+  var tripKm=null, tripKmSeq=0, tripKmTimer=null;
+  function setTripKm(v,note){tripKm=v;$('trip-km').value=v==null?'':numToInput(v);$('trip-km-note').textContent=note||'';}
+  function matchRoute(from,to){
+    var f=String(from).trim().toLowerCase(), t=String(to).trim().toLowerCase();
+    if(!f||!t) return null;
+    return routes.filter(function(r){return r.from.trim().toLowerCase()===f&&r.to.trim().toLowerCase()===t;})[0]||null;
+  }
+  function calcTripKm(){
+    var from=$('trip-from').value.trim(), to=$('trip-to').value.trim(), seq=++tripKmSeq;
+    if(!from||!to){setTripKm(null,'');return;}
+    var r=matchRoute(from,to);
+    if(r){setTripKm(r.km,'Theo tuyến đã lưu: '+r.name);return;}
+    if(!(db&&db.routeKm)){setTripKm(null,'Số km tự tính khi dùng bản trực tuyến.');return;}
+    setTripKm(null,'Đang tính km theo Google Maps…');
+    db.routeKm(from,to).then(function(j){
+      if(seq!==tripKmSeq) return;
+      if(j&&j.km!=null) setTripKm(j.km,j.src==='preset'?'Theo tuyến đã lưu.':'Ước tính theo Google Maps, một chiều.');
+      else setTripKm(null,'Chưa tính được km. Hãy ghi rõ địa chỉ hơn hoặc báo quản lý.');
+    }).catch(function(){if(seq===tripKmSeq) setTripKm(null,'Chưa tính được km, hãy kiểm tra mạng.');});
+  }
+  function schedTripKm(){if(tripKmTimer) clearTimeout(tripKmTimer);tripKmTimer=setTimeout(calcTripKm,700);}
+  $('trip-route').addEventListener('change',function(){
+    var r=routes[Number(this.value)];
+    if(!r||this.value===''){return;}
+    $('trip-from').value=r.from;$('trip-to').value=r.to;
+    tripKmSeq++;setTripKm(r.km,'Theo tuyến đã lưu: '+r.name);
+  });
+  ['trip-from','trip-to'].forEach(function(id){
+    $(id).addEventListener('input',function(){$('trip-route').value='';schedTripKm();});
+    $(id).addEventListener('change',function(){if(tripKmTimer) clearTimeout(tripKmTimer);calcTripKm();});
+  });
+  $('trip-km').addEventListener('input',function(){
+    if(!me||me.role!=='admin') return;
+    var r=parseNum(this.value);
+    tripKm=(r.empty||r.bad)?null:r.v;
+    $('trip-km-w').classList.toggle('bad',!!r.bad);
+  });
+  $('trip-body').addEventListener('change',async function(e){
+    var t0=e.target; if(!t0||!t0.getAttribute||!t0.getAttribute('data-tkm')||!me||me.role!=='admin') return;
+    var t=trips[t0.getAttribute('data-tkm')]; if(!t) return;
+    var r=parseNum(t0.value);
+    if(r.bad){t0.value=t.km!=null?numToInput(t.km):'';return;}
+    t.km=r.empty?null:r.v;
+    await ready;setStatus('saving');
+    try{
+      if(mode==='db') await db.doc('trips/'+t.id).set({plate:t.plate,driver:t.driver,from:t.from,to:t.to,km:t.km,start:t.start,at:t.at});
+      else persistLocal();
+      setStatus('saved');renderRows();
+    }catch(err){setStatus('error',err);}
+  });
   function renderTrips(){
-    renderTripForm();
+    renderTripForm();renderRoutes();
     var f=$('trip-filter').value;
     var list=Object.keys(trips).map(function(k){return trips[k];}).filter(function(t){return monthOfMs(t.start)===month&&(!f||t.plate===f);}).sort(function(a,b){return b.start-a.start||b.at-a.at;});
     $('trip-title').textContent='Các chuyến đi '+mLabel(month).toLowerCase();
-    $('trip-count').textContent=list.length+' chuyến';
+    var sumKm=0,anyKm=false;list.forEach(function(t){if(t.km!=null){sumKm+=t.km;anyKm=true;}});
+    $('trip-count').textContent=list.length+' chuyến'+(anyKm?', '+nfK.format(sumKm)+' km':'');
     $('trip-body').innerHTML=list.length?list.map(function(t){
       var asking=tripConfirm===t.id;
-      return '<tr><td class="num">'+dmyFull(t.start)+' '+fmtClock(t.start)+'</td><td><span class="plate-sm">'+esc(fmtPlate(t.plate))+'</span></td><td>'+esc(t.driver)+'</td><td class="wrap">'+esc(t.from)+'</td><td class="wrap">'+esc(t.to)+'</td><td class="num">'+atTxt(t.at)+'</td>'+
+      return '<tr><td class="num">'+dmyFull(t.start)+' '+fmtClock(t.start)+'</td><td><span class="plate-sm">'+esc(fmtPlate(t.plate))+'</span></td><td>'+esc(t.driver)+'</td><td class="wrap">'+esc(t.from)+'</td><td class="wrap">'+esc(t.to)+'</td><td class="num">'+tripKmCell(t)+'</td><td class="num">'+atTxt(t.at)+'</td>'+
         '<td><button class="mbtn" type="button" data-del="'+esc(t.id)+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
-    }).join(''):'<tr><td class="empty" colspan="7">Chưa có chuyến đi nào trong '+mLabel(month).toLowerCase()+'. Ghi chuyến đầu tiên ở phía trên.</td></tr>';
+    }).join(''):'<tr><td class="empty" colspan="8">Chưa có chuyến đi nào trong '+mLabel(month).toLowerCase()+'. Ghi chuyến đầu tiên ở phía trên.</td></tr>';
   }
   async function writeTrip(t){
     await ready;
     setStatus('saving');
     try{
-      if(mode==='db') await db.doc('trips/'+t.id).set({plate:t.plate,driver:t.driver,from:t.from,to:t.to,start:t.start,at:t.at});
+      if(mode==='db') await db.doc('trips/'+t.id).set({plate:t.plate,driver:t.driver,from:t.from,to:t.to,km:t.km==null?null:t.km,start:t.start,at:t.at});
       else persistLocal();
       if(tripPending.get(t.id)===t) tripPending.delete(t.id);
       setStatus('saved');
@@ -2447,9 +2582,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var nd=new Date(nowNaive());
     var start=Date.UTC(nd.getUTCFullYear(),nd.getUTCMonth(),nd.getUTCDate(),hmv.h,hmv.mi);
     tripErr('');
-    var t={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,driver:driver.slice(0,60),from:from.slice(0,120),to:to.slice(0,120),start:start,at:Date.now()};
+    var t={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,driver:driver.slice(0,60),from:from.slice(0,120),to:to.slice(0,120),km:tripKm,start:start,at:Date.now()};
     trips[t.id]=t;tripPending.set(t.id,t);
-    $('trip-from').value='';$('trip-to').value='';fillNow();
+    $('trip-from').value='';$('trip-to').value='';$('trip-route').value='';tripKmSeq++;setTripKm(null,'');fillNow();
     renderTrips();renderSum();
     writeTrip(t);
     $('trip-from').focus();
@@ -3206,8 +3341,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var cols3=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Người đổ dầu',w:20,al:'left'},{h:'Số lít',w:12,fmt:L1,sum:true},{h:'Thành tiền',w:18,fmt:MONEY,sum:true},{h:'Số tệp hình ảnh, video',w:14,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
     if(want('refuel')) sheet('Sổ đổ dầu','Sổ đổ dầu',cols3,refuels.map(function(x){return [new Date(x.date),fmtPlate(x.plate),x.by||'',x.liters,x.cost,(x.media||[]).length,atDate(x.at)];}),{totals:true,totalLabel:'Tổng'});
     // 4. Hành trình
-    var cols4=[{h:'Bắt đầu chạy',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Tài xế',w:24,al:'left'},{h:'Nơi đi',w:32,al:'left',wrap:true},{h:'Nơi đến',w:32,al:'left',wrap:true},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
-    if(want('trips')) sheet('Sổ hành trình','Sổ hành trình xe',cols4,tripsL.map(function(t){return [new Date(t.start),fmtPlate(t.plate),t.driver,t.from,t.to,atDate(t.at)];}),{notes:tripsL.length?['Tổng số chuyến trong kỳ: '+tripsL.length+'.']:[]});
+    var cols4=[{h:'Bắt đầu chạy',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Tài xế',w:24,al:'left'},{h:'Nơi đi',w:32,al:'left',wrap:true},{h:'Nơi đến',w:32,al:'left',wrap:true},{h:'Quãng đường (km)',w:18,fmt:L1,sum:true},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
+    if(want('trips')) sheet('Sổ hành trình','Sổ hành trình xe',cols4,tripsL.map(function(t){return [new Date(t.start),fmtPlate(t.plate),t.driver,t.from,t.to,t.km,atDate(t.at)];}),{totals:true,totalLabel:'Tổng',notes:tripsL.length?['Tổng số chuyến trong kỳ: '+tripsL.length+'.','Quãng đường là km một chiều tính theo tuyến đã lưu hoặc Google Maps, chỉ để tham khảo; số km thực tế xem ở dữ liệu Adsun.']:[]});
     // 5. Sửa chữa và bảo dưỡng
     var cols5=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Loại',w:13,al:'left'},{h:'Nội dung',w:46,al:'left',wrap:true},{h:'Nơi thực hiện',w:26,al:'left',wrap:true},{h:'Chi phí',w:18,fmt:MONEY,sum:true},{h:'Số tệp đính kèm',w:12,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
     if(want('maint')) sheet('Sửa chữa & bảo dưỡng','Sửa chữa và bảo dưỡng',cols5,maintL.map(function(m){return [new Date(m.date),fmtPlate(m.plate),KIND_TXT[m.kind],m.desc,m.place||null,m.cost,(m.media||[]).length,atDate(m.at)];}),{totals:true,totalLabel:'Tổng',rowH:24});
@@ -3482,6 +3617,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     h.classList.add(me.role==='admin'?'role-quanly':me.role==='nhansu'?'role-ketoan':me.role==='totruong'?'role-taixe':'role-'+me.role);
     $('rows').inert=!(can('edit')||isDrv(me.role));lockTaixe();
     Array.prototype.forEach.call(document.querySelectorAll('[data-kmsave]'),function(bn){bn.textContent=isMgr(me.role)?'Lưu':'Lưu số km';});
+    $('trip-km').readOnly=me.role!=='admin';$('trip-km-w').classList.toggle('ro',me.role!=='admin');
     var rb=$('rf-by'); if(rb){rb.value=me.name||me.id;rb.readOnly=!can('edit');}
     $('who').hidden=false;
     $('who-txt').innerHTML='Xin chào, <b>'+esc(me.name)+'</b> · '+ROLE_TXT[me.role];
@@ -3621,6 +3757,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       media:media,
       auth:auth,
       kmOnly:true,
+      routeKm:function(from,to){return call({op:'routeKm',from:from,to:to});},
       doc:function(path){
         var p=path.split('/'),col=p[0],id=p[1];
         return {
