@@ -2910,7 +2910,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }catch(e){
       if(seq!==ocrSeq) return;
       var code=e&&e.code;
-      ocrNote(code==='no_key'?'Chưa bật tính năng đọc số từ ảnh. Bạn nhập tay nhé.':code==='limit'?'Đã dùng hết lượt đọc ảnh, bạn nhập tay nhé.':'Chưa đọc được số từ ảnh, bạn nhập tay nhé.',true);
+      ocrNote(code==='no_key'?'Chưa bật tính năng đọc số từ ảnh. Bạn nhập tay nhé.':code==='limit'?'Đã dùng hết lượt đọc ảnh, bạn nhập tay nhé.':'Chưa đọc được số từ ảnh, bạn nhập tay nhé.'+(e&&(e.detail||e.status)?' (Lỗi '+(e.status?e.status+': ':'')+(e.detail||'')+')':''),true);
     }
     btn.disabled=false;
   }
@@ -3972,7 +3972,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     function setSess(x){try{if(x) localStorage.setItem(SKEY,JSON.stringify(x)); else localStorage.removeItem(SKEY);}catch(e){}}
     async function rawPost(body){
       var r=await fetch(API,{method:'POST',body:JSON.stringify(body)});
-      var j=await r.json();if(j.error) throw {code:j.error};return j;
+      var j=await r.json();if(j.error) throw {code:j.error,detail:j.detail,status:j.status};return j;
     }
     async function call(body){
       try{
