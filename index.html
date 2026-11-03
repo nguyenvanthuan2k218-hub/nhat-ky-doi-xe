@@ -2687,6 +2687,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   });
 
   /* ---------- Sổ đổ dầu ---------- */
+  var bgJobs=new Map(), bgDoneT=null, jobsDb=null;
   var refuel={}, refuelPending=new Map(), refuelConfirm=null, refuelConfirmT=null, refuelPlateKey='';
   function cleanMedia(a){
     var med=[];
@@ -2918,6 +2919,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   function mediaCell(x,attr){
     attr=attr||'data-rid';
+    if(bgJobs.has(x.id)) return '<span class="sec-sub">Đang tải ảnh lên…</span>';
     if(!x.media||!x.media.length) return '<span class="dash">—</span>';
     return '<div class="mcell">'+x.media.map(function(m,i){
       var lab=m.type==='video'?'Xem video':m.type==='file'?'Mở file':'Xem ảnh';
@@ -2948,6 +2950,81 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       else body.innerHTML='<img alt="Hình ảnh đính kèm" src="'+u+'">';
     }catch(e){body.textContent='Không mở được tệp này.';}
   }
+  /* ---------- Ghi vào sổ: lưu ngay, ảnh tải lên nền và tự tiếp tục nếu lỡ đóng trang ---------- */
+  function jobsOpen(){
+    return new Promise(function(res){
+      if(jobsDb) return res(jobsDb);
+      if(!window.indexedDB) return res(null);
+      try{
+        var rq=indexedDB.open('phucan-jobs',1);
+        rq.onupgradeneeded=function(){rq.result.createObjectStore('jobs',{keyPath:'id'});};
+        rq.onsuccess=function(){jobsDb=rq.result;res(jobsDb);};
+        rq.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+  }
+  function jobsTx(m,fn){
+    return jobsOpen().then(function(d){
+      if(!d) return null;
+      return new Promise(function(res){
+        try{
+          var tx=d.transaction('jobs',m), r=fn(tx.objectStore('jobs'));
+          tx.oncomplete=function(){res(r&&r.result!==undefined?r.result:true);};
+          tx.onerror=tx.onabort=function(){res(null);};
+        }catch(e){res(null);}
+      });
+    });
+  }
+  function jobPut(j){return jobsTx('readwrite',function(st){return st.put(j);});}
+  function jobDel(id){return jobsTx('readwrite',function(st){return st.delete(id);});}
+  function jobAll(){return jobsTx('readonly',function(st){return st.getAll();}).then(function(a){return Array.isArray(a)?a:[];});}
+  function showBg(){
+    if(bgDoneT){clearTimeout(bgDoneT);bgDoneT=null;}
+    if(bgJobs.size){rfProg('Đã ghi vào sổ. Đang tải '+bgJobs.size+' phiếu ảnh lên nền, vui lòng chưa đóng trang cho đến khi xong. Nếu lỡ đóng, lần mở sau sẽ tự tải tiếp.');}
+    else{rfProg('Đã tải xong ảnh.');bgDoneT=setTimeout(function(){rfProg('');},4000);}
+    renderRefuel();
+  }
+  async function putRefuel(x){
+    await ready;
+    if(mode==='db') await db.doc('refuel/'+x.id).set({plate:x.plate,liters:x.liters,cost:x.cost,by:x.by||'',media:x.media,date:x.date,at:x.at});
+    else persistLocal();
+  }
+  async function runJob(job){
+    if(bgJobs.has(job.id)) return;
+    bgJobs.set(job.id,1);showBg();
+    try{
+      var api=await getMediaApi(), rec=job.rec;
+      await putRefuel(Object.assign({},rec,{media:job.done.slice()}));
+      if(refuelPending.get(rec.id)===rec||refuelPending.get(rec.id)===refuel[rec.id]) refuelPending.delete(rec.id);
+      for(var i=job.done.length;i<job.files.length;i++){
+        var f=job.files[i], id=await api.put(f.blob,f.name);
+        job.done.push({id:String(id),type:f.type,name:f.name,size:f.blob.size});
+        await jobPut(job);
+      }
+      var fin=Object.assign({},rec,{media:job.done.slice()});
+      refuel[rec.id]=fin;refuelPending.set(rec.id,fin);
+      await putRefuel(fin);
+      if(refuelPending.get(rec.id)===fin) refuelPending.delete(rec.id);
+      await jobDel(job.id);
+      bgJobs.delete(job.id);showBg();renderHomeIf();
+    }catch(e){
+      bgJobs.delete(job.id);
+      if(e&&e.message==='no-assets'){await jobDel(job.id);rfErr('Chưa bật chỗ lưu hình ảnh, video ở bản này.');showBg();return;}
+      rfProg('Chưa tải được ảnh (mạng yếu?). Ứng dụng sẽ tự thử lại, vui lòng chưa đóng trang.');
+      renderRefuel();
+      setTimeout(function(){runJob(job);},15000);
+    }
+  }
+  async function resumeJobs(){
+    if(!me) return;
+    var all=await jobAll();
+    all.filter(function(j){return j.uid===me.id&&!bgJobs.has(j.id);}).forEach(function(j){
+      if(!refuel[j.id]){refuel[j.id]=j.rec;refuelPending.set(j.id,j.rec);}
+      runJob(j);
+    });
+  }
+  window.addEventListener('online',function(){resumeJobs();});
+  window.addEventListener('beforeunload',function(e){if(bgJobs.size){e.preventDefault();e.returnValue='';}});
   async function addRefuel(){
     if(rfBusy||!can('add')) return;
     var plate=$('rf-plate').value, liters=parseLiters($('rf-liters').value), cost=parseMoney($('rf-cost').value);
@@ -2955,28 +3032,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(liters==null){rfErr('Số lít chưa đúng. Nhập số lớn hơn 0, ví dụ 45,5.');return;}
     if(!cost.ok){rfErr('Thành tiền chưa đúng. Chỉ nhập số, ví dụ 1.000.000.');return;}
     if(!rfFiles.length){rfErr('Hãy chọn hình ảnh hoặc video trước khi ghi.');return;}
-    rfErr('');rfBusy=true;$('rf-submit').disabled=true;
-    var done=[],api;
+    rfErr('');rfBusy=true;$('rf-submit').disabled=true;rfProg('Đang chuẩn bị ảnh…');
+    var files=[];
     try{
-      api=await getMediaApi();
       for(var i=0;i<rfFiles.length;i++){
-        rfProg('Đang tải lên '+(i+1)+'/'+rfFiles.length+'…');
         var pf=await prepFile(rfFiles[i].file);
-        var id=await api.put(pf.blob,pf.name);
-        done.push({id:String(id),type:pf.type,name:pf.name,size:pf.blob.size});
+        files.push({blob:pf.blob,type:pf.type,name:pf.name});
       }
     }catch(e){
-      done.forEach(function(m){try{api.del(m);}catch(_){}});
       rfBusy=false;$('rf-submit').disabled=false;rfProg('');
-      rfErr(e&&e.message==='no-assets'?'Chưa bật chỗ lưu hình ảnh, video ở bản này.':'Tải lên chưa được. Hãy kiểm tra mạng rồi thử lại, hình ảnh và video vẫn còn trong ô.');
+      rfErr('Chưa xử lý được hình ảnh. Hãy chọn lại ảnh rồi thử lại.');
       return;
     }
-    var x={id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,liters:liters,cost:cost.v,by:(me&&me.name)||'',media:done,date:dayStart(nowNaive()),at:Date.now()};
+    var x={id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,liters:liters,cost:cost.v,by:(me&&me.name)||'',media:[],date:dayStart(nowNaive()),at:Date.now()};
+    var job={id:x.id,uid:me?me.id:'',rec:x,files:files,done:[]};
+    await jobPut(job);
     refuel[x.id]=x;refuelPending.set(x.id,x);
-    $('rf-liters').value='';$('rf-cost').value='';clearRfFiles();
-    rfBusy=false;$('rf-submit').disabled=false;rfProg('');
+    $('rf-liters').value='';$('rf-cost').value='';ocrSeq++;ocrNote('');clearRfFiles();
+    rfBusy=false;$('rf-submit').disabled=false;
     renderRefuel();renderHomeIf();
-    writeRefuel(x);
+    runJob(job);
     $('rf-liters').focus();
   }
   function deleteRefuel(id){
@@ -3895,7 +3970,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     h.classList.add('role-'+me.role);
     // quản trị cao nhất dùng giao diện của quản lý, nhân sự như kế toán, tổ trưởng như tài xế
     h.classList.add(me.role==='admin'?'role-quanly':me.role==='nhansu'?'role-ketoan':me.role==='totruong'?'role-taixe':'role-'+me.role);
-    $('rows').inert=!(can('edit')||isDrv(me.role));lockTaixe();
+    $('rows').inert=!(can('edit')||isDrv(me.role));lockTaixe();resumeJobs();
     Array.prototype.forEach.call(document.querySelectorAll('[data-kmsave]'),function(bn){bn.textContent=isMgr(me.role)?'Lưu':'Lưu số km';});
     $('trip-km').readOnly=me.role!=='admin';$('trip-km-w').classList.toggle('ro',me.role!=='admin');
     var rb=$('rf-by'); if(rb){rb.value=me.name||me.id;rb.readOnly=!can('edit');}
