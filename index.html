@@ -670,7 +670,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           <div class="mpick"><button class="btn" type="button" id="rf-any">Chọn hình ảnh, video</button></div>
           <input id="rf-in-any" type="file" accept="image/*,video/*" multiple hidden>
           <div class="mthumbs" id="rf-thumbs"></div>
-          <div id="rf-ocr-row" style="margin-top:8px;display:none;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn small" type="button" id="rf-ocr">Đọc số từ ảnh</button><span class="sec-sub" id="rf-ocr-note" role="status"></span></div>
+          <div id="rf-ocr-row" style="margin-top:8px;display:none;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn small" type="button" id="rf-ocr">Đọc lại số từ ảnh đầu tiên</button><span class="sec-sub" id="rf-ocr-note" role="status"></span></div>
           <span class="sec-sub" style="margin-top:6px">Ví dụ: ảnh đồng hồ xăng, ảnh hóa đơn, video lúc đổ. Tối đa 6 tệp, mỗi tệp không quá 20 MB.</span>
         </div>
         <div class="tform-act"><span class="sec-sub" id="rf-prog" role="status" style="margin-right:auto"></span><button class="btn primary" type="submit" id="rf-submit">Ghi vào sổ</button></div>
@@ -2870,7 +2870,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }).join('');
     syncOcrRow();
     var fi=rfFiles.filter(function(x){return !x.isV;})[0];
-    if(fi&&fi!==ocrFirst&&ocrAvail()){ocrFirst=fi;readMeterNow(false);}
+    if(fi&&ocrFirst===null&&ocrAvail()){ocrFirst=fi;readMeterNow(false);}
     if(!fi){ocrFirst=null;ocrSeq++;}
   }
   function clearRfFiles(){rfFiles.forEach(function(x){URL.revokeObjectURL(x.url);});rfFiles=[];renderRfThumbs();}
