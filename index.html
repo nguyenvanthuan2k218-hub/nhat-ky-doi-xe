@@ -2877,7 +2877,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function clearRfFiles(){rfFiles.forEach(function(x){URL.revokeObjectURL(x.url);});rfFiles=[];renderRfThumbs();}
   /* ---------- Đọc số trên cột bơm từ ảnh (Claude) ---------- */
   var ocrSeq=0, nf3=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:3}), nf0=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0});
-  function ocrAvail(){return !!(db&&db.readMeter);}
+  var OCR_ON=false; // tạm tắt tính năng đọc số từ ảnh, đổi thành true để bật lại
+  function ocrAvail(){return OCR_ON&&!!(db&&db.readMeter);}
   function ocrNote(t,warn){var n=$('rf-ocr-note');n.textContent=t||'';n.style.color=warn?'#B3261E':'';}
   function syncOcrRow(){
     var has=ocrAvail()&&rfFiles.some(function(x){return !x.isV;});
