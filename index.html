@@ -2910,7 +2910,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }catch(e){
       if(seq!==ocrSeq) return;
       var code=e&&e.code;
-      ocrNote(code==='no_key'?'Chưa bật tính năng đọc số từ ảnh. Bạn nhập tay nhé.':code==='limit'?'Đã dùng hết lượt đọc ảnh, bạn nhập tay nhé.':'Chưa đọc được số từ ảnh, bạn nhập tay nhé.'+(e&&(e.detail||e.status)?' (Lỗi '+(e.status?e.status+': ':'')+(e.detail||'')+')':''),true);
+      ocrNote(code==='no_key'?'Chưa bật tính năng đọc số từ ảnh. Bạn nhập tay nhé.':code==='limit'?'Đã dùng hết lượt đọc ảnh, bạn nhập tay nhé.':'Chưa đọc được số từ ảnh, bạn nhập tay nhé.'+' (Mã lỗi: '+((e&&(e.status||e.code||e.message))||'không rõ')+(e&&e.detail?' - '+e.detail:'')+')',true);
     }
     btn.disabled=false;
   }
