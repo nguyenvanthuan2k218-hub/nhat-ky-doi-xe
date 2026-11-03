@@ -670,6 +670,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           <div class="mpick"><button class="btn" type="button" id="rf-any">Chọn hình ảnh, video</button></div>
           <input id="rf-in-any" type="file" accept="image/*,video/*" multiple hidden>
           <div class="mthumbs" id="rf-thumbs"></div>
+          <div id="rf-ocr-row" style="margin-top:8px;display:none;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn small" type="button" id="rf-ocr">Đọc số từ ảnh</button><span class="sec-sub" id="rf-ocr-note" role="status"></span></div>
           <span class="sec-sub" style="margin-top:6px">Ví dụ: ảnh đồng hồ xăng, ảnh hóa đơn, video lúc đổ. Tối đa 6 tệp, mỗi tệp không quá 20 MB.</span>
         </div>
         <div class="tform-act"><span class="sec-sub" id="rf-prog" role="status" style="margin-right:auto"></span><button class="btn primary" type="submit" id="rf-submit">Ghi vào sổ</button></div>
@@ -2707,7 +2708,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!t) return null;
     if(t.indexOf(',')>=0) t=t.replace(/\./g,'').replace(',','.');
     else if((t.match(/\./g)||[]).length>1) t=t.replace(/\./g,'');
-    if(!/^\d{1,4}(\.\d{1,2})?$/.test(t)) return null;
+    if(!/^\d{1,4}(\.\d{1,3})?$/.test(t)) return null;
     var v=Number(t);
     return v>0?v:null;
   }
@@ -2862,12 +2863,59 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     rfErr(errs.join(' '));
     renderRfThumbs();
   }
+  var ocrFirst=null;
   function renderRfThumbs(){
     $('rf-thumbs').innerHTML=rfFiles.map(function(x,i){
       return '<div class="mt-item">'+(x.isV?'<video src="'+x.url+'#t=0.1" muted playsinline preload="metadata"></video>':'<img alt="Ảnh đã chọn '+(i+1)+'" src="'+x.url+'">')+'<button class="mt-x" type="button" data-rm="'+i+'" aria-label="Bỏ tệp này">×</button></div>';
     }).join('');
+    syncOcrRow();
+    var fi=rfFiles.filter(function(x){return !x.isV;})[0];
+    if(fi&&fi!==ocrFirst&&ocrAvail()){ocrFirst=fi;readMeterNow(false);}
+    if(!fi){ocrFirst=null;ocrSeq++;}
   }
   function clearRfFiles(){rfFiles.forEach(function(x){URL.revokeObjectURL(x.url);});rfFiles=[];renderRfThumbs();}
+  /* ---------- Đọc số trên cột bơm từ ảnh (Claude) ---------- */
+  var ocrSeq=0, nf3=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:3}), nf0=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0});
+  function ocrAvail(){return !!(db&&db.readMeter);}
+  function ocrNote(t,warn){var n=$('rf-ocr-note');n.textContent=t||'';n.style.color=warn?'#B3261E':'';}
+  function syncOcrRow(){
+    var has=ocrAvail()&&rfFiles.some(function(x){return !x.isV;});
+    $('rf-ocr-row').style.display=has?'flex':'none';
+    if(!has) ocrNote('');
+  }
+  async function smallJpeg(file){
+    var im=await loadImg(file), k=Math.min(1,1280/Math.max(im.naturalWidth,im.naturalHeight));
+    var cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(im.naturalWidth*k));cv.height=Math.max(1,Math.round(im.naturalHeight*k));
+    cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
+    return cv.toDataURL('image/jpeg',0.85).split(',')[1];
+  }
+  async function readMeterNow(force){
+    if(!ocrAvail()) return;
+    var f=rfFiles.filter(function(x){return !x.isV;})[0]; if(!f) return;
+    var seq=++ocrSeq, btn=$('rf-ocr');
+    btn.disabled=true;ocrNote('Đang đọc số từ ảnh…');
+    try{
+      var data=await smallJpeg(f.file);
+      var j=await db.readMeter('image/jpeg',data);
+      if(seq!==ocrSeq) return;
+      if(!j||j.liters==null){ocrNote('Chưa đọc rõ số trên ảnh, bạn nhập tay nhé.',true);}
+      else{
+        var lEl=$('rf-liters'), cEl=$('rf-cost');
+        if(force||!lEl.value.trim()) lEl.value=nf3.format(j.liters);
+        if(j.money!=null&&(force||!cEl.value.trim())) cEl.value=nf0.format(j.money);
+        var msg='Đã đọc từ ảnh: '+nf3.format(j.liters)+' lít'+(j.money!=null?', '+nf0.format(j.money)+' đồng':'')+(j.price!=null?', đơn giá '+nf0.format(j.price):'')+'. Hãy đối chiếu với ảnh trước khi ghi.';
+        if(j.check===false){ocrNote(msg+' Cảnh báo: số lít nhân đơn giá không khớp thành tiền, có thể đọc sai một số.',true);}
+        else ocrNote(msg);
+      }
+    }catch(e){
+      if(seq!==ocrSeq) return;
+      var code=e&&e.code;
+      ocrNote(code==='no_key'?'Chưa bật tính năng đọc số từ ảnh. Bạn nhập tay nhé.':code==='limit'?'Đã dùng hết lượt đọc ảnh, bạn nhập tay nhé.':'Chưa đọc được số từ ảnh, bạn nhập tay nhé.',true);
+    }
+    btn.disabled=false;
+  }
+  $('rf-ocr').addEventListener('click',function(){readMeterNow(true);});
+
   function mediaCell(x,attr){
     attr=attr||'data-rid';
     if(!x.media||!x.media.length) return '<span class="dash">—</span>';
@@ -3989,7 +4037,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       media:media,
       auth:auth,
       kmOnly:true,
-      routeKm:function(from,to){return call({op:'routeKm',from:from,to:to});},
+      routeKm:function(from,to){return call({op:'routeKm',from:from,to:to});},readMeter:function(mime,data){return call({op:'readMeter',mime:mime,data:data});},
       doc:function(path){
         var p=path.split('/'),col=p[0],id=p[1];
         return {
