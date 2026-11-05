@@ -712,12 +712,8 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <label class="fld"><span class="lab">Biển số xe</span><select class="txt" id="mt-plate"></select></label>
         <label class="fld"><span class="lab">Loại</span><select class="txt" id="mt-kind"><option value="service">Bảo dưỡng</option><option value="repair">Sửa chữa</option><option value="oil">Thay nhớt</option></select></label>
         <label class="fld"><span class="lab">Chi phí (không bắt buộc)</span><span class="inp"><input id="mt-cost" type="text" inputmode="numeric" placeholder="1.500.000"><em>đồng</em></span></label>
-        <div class="fld mgr-only" id="mt-oil-x" style="grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:12px">
-          <label class="fld"><span class="lab">Ngày thay nhớt (để trống là hôm nay)</span><span class="inp"><input id="mt-odate" type="text" inputmode="numeric" placeholder="15/10/2026"><em>ngày/tháng/năm</em></span></label>
-          <label class="fld"><span class="lab">Đã chạy sẵn kể từ lần thay này (không bắt buộc)</span><span class="inp"><input id="mt-okm" type="text" inputmode="decimal" placeholder="2.500"><em>km</em></span><span class="sec-sub" style="margin-top:4px">Dùng khi lần thay nhớt này xảy ra trước lúc dùng phần mềm, để tính đúng số km đã chạy.</span></label>
-        </div>
         <label class="fld" style="grid-column:1/-1"><span class="lab">Nội dung</span><input class="txt" id="mt-desc" type="text" maxlength="300" placeholder="Ví dụ: Thay nhớt, lọc nhớt, kiểm tra phanh"></label>
-        <div class="fld" style="grid-column:1/-1"><label class="lab" for="mt-warr">Bảo hành đến ngày (không bắt buộc)</label><span class="inp"><input id="mt-warr" type="text" inputmode="numeric" placeholder="31/12/2027"><em>ngày/tháng/năm</em></span>
+        <div class="fld" id="mt-warr-wrap" style="grid-column:1/-1"><label class="lab" for="mt-warr">Bảo hành đến ngày (không bắt buộc)</label><span class="inp"><input id="mt-warr" type="text" inputmode="numeric" placeholder="31/12/2027"><em>ngày/tháng/năm</em></span>
           <span class="wq"><button class="btn small" type="button" data-wm="3">+3 tháng</button><button class="btn small" type="button" data-wm="6">+6 tháng</button><button class="btn small" type="button" data-wm="12">+1 năm</button><button class="btn small" type="button" data-wm="24">+2 năm</button><span class="sec-sub" style="align-self:center">Bấm để tính từ hôm nay, hoặc tự nhập ngày hết bảo hành.</span></span></div>
         <label class="fld" style="grid-column:1/-1"><span class="lab">Nơi thực hiện (không bắt buộc)</span><input class="txt" id="mt-place" type="text" list="dl-mt-places" maxlength="120" placeholder="Ví dụ: Gara Hoàng Phát"></label>
         <div class="fld" style="grid-column:1/-1"><span class="lab">Hóa đơn đỏ, hình ảnh, file (không bắt buộc)</span>
@@ -3296,12 +3292,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var warr=null, wv=$('mt-warr').value.trim();
     if(wv){warr=parseDMY(wv);if(warr==null){mtErr('Ngày bảo hành chưa đúng. Nhập dạng ngày/tháng/năm, ví dụ 31/12/2027.');return;}}
     var kindV=$('mt-kind').value==='repair'?'repair':$('mt-kind').value==='oil'?'oil':'service', mdate=null, kmb=null;
-    if(kindV==='oil'&&can('edit')){
-      var od=$('mt-odate').value.trim();
-      if(od){mdate=parseDMY(od);if(mdate==null||mdate>dayStart(nowNaive())){mtErr('Ngày thay nhớt chưa đúng. Nhập dạng ngày/tháng/năm, không được sau hôm nay.');return;}}
-      var ok0=$('mt-okm').value.trim();
-      if(ok0){var kp=parseNum(ok0);if(kp.bad||kp.v==null||kp.v<0||kp.v>200000){mtErr('Số km đã chạy sẵn chưa đúng.');return;}kmb=kp.v;}
-    }
+    if(kindV==='oil') warr=null;
     mtErr('');mtBusy=true;$('mt-submit').disabled=true;
     var done=[],api=null;
     if(mtFiles.length){
@@ -3323,7 +3314,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var nn=nowNaive();
     var m={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,kind:kindV,warr:warr,kmb:kmb,desc:desc.slice(0,300),place:$('mt-place').value.trim().slice(0,120),cost:cost.v,media:done,date:mdate!=null?mdate:dayStart(nn),at:Date.now()};
     maint[m.id]=m;maintPending.set(m.id,m);
-    $('mt-desc').value='';$('mt-cost').value='';$('mt-warr').value='';$('mt-odate').value='';$('mt-okm').value='';clearMtFiles();
+    $('mt-desc').value='';$('mt-cost').value='';$('mt-warr').value='';clearMtFiles();
     mtBusy=false;$('mt-submit').disabled=false;$('mt-prog').textContent='';
     renderMaint();renderHomeIf();
     writeMaint(m);
@@ -3347,7 +3338,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     renderMaint();renderHomeIf();
   }
   $('mt-form').addEventListener('submit',function(e){e.preventDefault();addMaint();});
-  function syncOilX(){$('mt-oil-x').style.display=($('mt-kind').value==='oil')?'grid':'none';if($('mt-kind').value==='oil'&&!$('mt-desc').value.trim()) $('mt-desc').value='Thay nhớt';}
+  function syncOilX(){var oil=$('mt-kind').value==='oil';$('mt-warr-wrap').style.display=oil?'none':'';if(oil){$('mt-warr').value='';if(!$('mt-desc').value.trim()) $('mt-desc').value='Thay nhớt';}}
   $('mt-kind').addEventListener('change',syncOilX);
   Array.prototype.forEach.call(document.querySelectorAll('[data-wm]'),function(b){b.addEventListener('click',function(){var t=addMonthsMs(dayStart(nowNaive()),Number(b.getAttribute('data-wm')));$('mt-warr').value=p2(new Date(t).getUTCDate())+'/'+p2(new Date(t).getUTCMonth()+1)+'/'+new Date(t).getUTCFullYear();});});
   $('mt-filter').addEventListener('change',renderMaint);
