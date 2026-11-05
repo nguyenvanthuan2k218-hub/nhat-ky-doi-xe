@@ -714,9 +714,9 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <label class="fld"><span class="lab">Chi phí (không bắt buộc)</span><span class="inp"><input id="mt-cost" type="text" inputmode="numeric" placeholder="1.500.000"><em>đồng</em></span></label>
         <label class="fld" style="grid-column:1/-1"><span class="lab">Nội dung</span><input class="txt" id="mt-desc" type="text" maxlength="300" placeholder="Ví dụ: Thay nhớt, lọc nhớt, kiểm tra phanh"></label>
         <div class="fld" id="mt-warr-wrap" style="grid-column:1/-1"><span class="lab">Bảo hành theo hợp đồng với gara (không bắt buộc)</span>
-          <label class="wchk"><input type="checkbox" id="mt-wk-work"><span><b>Công việc sửa chữa</b> <small>6 tháng hoặc 10.000 km, cái nào đến trước</small></span></label>
-          <label class="wchk"><input type="checkbox" id="mt-wk-part"><span><b>Phụ tùng chính hiệu</b> <small>1 năm hoặc 20.000 km, cái nào đến trước</small></span></label>
-          <span class="sec-sub" style="margin-top:4px">Tích loại bảo hành áp dụng cho lần sửa này, có thể tích cả hai. Web tự tính còn bao nhiêu ngày và bao nhiêu km.</span></div>
+          <label class="wchk"><input type="checkbox" id="mt-wk-work"><span><b>Sửa chữa</b> <small>6 tháng hoặc 10.000 km, cái nào đến trước</small></span></label>
+          <label class="wchk"><input type="checkbox" id="mt-wk-part"><span><b>Thay phụ tùng chính hiệu</b> <small>1 năm hoặc 20.000 km, cái nào đến trước</small></span></label>
+          <span class="sec-sub" style="margin-top:4px">Chỉ chọn 1 trong 2 loại bảo hành cho lần làm này (bấm lại để bỏ chọn). Web tự tính còn bao nhiêu ngày và bao nhiêu km.</span></div>
         <label class="fld" style="grid-column:1/-1"><span class="lab">Nơi thực hiện (không bắt buộc)</span><input class="txt" id="mt-place" type="text" list="dl-mt-places" maxlength="120" placeholder="Ví dụ: Gara Hoàng Phát"></label>
         <div class="fld" style="grid-column:1/-1"><span class="lab">Hóa đơn đỏ, hình ảnh, file (không bắt buộc)</span>
           <div class="mpick"><button class="btn" type="button" id="mt-any">Đính kèm hình ảnh, file PDF</button></div>
@@ -3136,8 +3136,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---------- Sửa chữa và bảo dưỡng ---------- */
   var maint={}, maintPending=new Map(), maintConfirm=null, maintConfirmT=null, maintPlateKey='';
   var KIND_TXT={service:'Bảo dưỡng',repair:'Sửa chữa',oil:'Thay nhớt'}, OIL_KM=6000, OIL_SOON=500;
-  var WARR={work:{label:'Công việc sửa chữa',months:6,km:10000},part:{label:'Phụ tùng chính hiệu',months:12,km:20000}}, WARR_SOON_DAYS=30, WARR_SOON_KM=1000;
-  function cleanWk(a){var o=[];if(Array.isArray(a)){['work','part'].forEach(function(t){if(a.indexOf(t)>=0) o.push(t);});}return o;}
+  var WARR={work:{label:'Sửa chữa',months:6,km:10000},part:{label:'Thay phụ tùng chính hiệu',months:12,km:20000}}, WARR_SOON_DAYS=30, WARR_SOON_KM=1000;
+  function cleanWk(a){var o=[];if(Array.isArray(a)){['work','part'].forEach(function(t){if(!o.length&&a.indexOf(t)>=0) o.push(t);});}return o;}
   function cleanMaint(id,x){
     if(!x||typeof x!=='object') return null;
     var plate=String(x.plate==null?'':x.plate).trim(), desc=String(x.desc==null?'':x.desc).trim();
@@ -3313,7 +3313,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!desc){mtErr('Nhập nội dung sửa chữa hoặc bảo dưỡng.');return;}
     if(!cost.ok){mtErr('Chi phí chưa đúng. Chỉ nhập số, ví dụ 1.500.000.');return;}
     var kindV=$('mt-kind').value==='repair'?'repair':$('mt-kind').value==='oil'?'oil':'service', wk=[];
-    if(kindV!=='oil'){if($('mt-wk-work').checked) wk.push('work');if($('mt-wk-part').checked) wk.push('part');}
+    if(kindV!=='oil'){if($('mt-wk-work').checked) wk.push('work'); else if($('mt-wk-part').checked) wk.push('part');}
     mtErr('');mtBusy=true;$('mt-submit').disabled=true;
     var done=[],api=null;
     if(mtFiles.length){
@@ -3359,6 +3359,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     renderMaint();renderHomeIf();
   }
   $('mt-form').addEventListener('submit',function(e){e.preventDefault();addMaint();});
+  $('mt-wk-work').addEventListener('change',function(){if(this.checked) $('mt-wk-part').checked=false;});
+  $('mt-wk-part').addEventListener('change',function(){if(this.checked) $('mt-wk-work').checked=false;});
   function syncOilX(){var oil=$('mt-kind').value==='oil';$('mt-warr-wrap').style.display=oil?'none':'';if(oil){$('mt-wk-work').checked=false;$('mt-wk-part').checked=false;if(!$('mt-desc').value.trim()) $('mt-desc').value='Thay nhớt';}}
   $('mt-kind').addEventListener('change',syncOilX);
   $('mt-filter').addEventListener('change',renderMaint);
