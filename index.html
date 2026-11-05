@@ -3177,7 +3177,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       var d0=Math.floor(dayStart(last.date)/864e5), km=last.kmb||0;
       Object.keys(trips).forEach(function(k){
         var t=trips[k]; if(t.plate!==v.id) return;
-        var d=Math.floor(dayStart(t.start)/864e5); if(d<=d0) return;
+        var d=Math.floor(dayStart(t.start)/864e5); if(d<=d0&&!(t.at>last.at)) return; // chuyến ghi sau lúc thay nhớt (kể cả cùng ngày) đều được tính
         if(t.km==null) o.noKm++; else km+=t.km;
       });
       o.km=km;o.left=OIL_KM-km;
