@@ -308,7 +308,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
 .listbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .listbar .txt{width:auto;min-width:150px}
 .sumbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
-.mgr-only-x{display:none}html.role-taixe .mgr-only{display:none!important}.wq{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.chip.s-warn{background:#FFF1D6;color:#8A5A00}.ivbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 16px}@media(max-width:700px){.ivbar{grid-template-columns:1fr}}.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
+.wchk{display:flex;align-items:flex-start;gap:10px;padding:8px 0;cursor:pointer}.wchk input{width:20px;height:20px;margin-top:2px;flex:none}.wchk small{color:var(--muted);font-weight:400;margin-left:6px}.mgr-only-x{display:none}html.role-taixe .mgr-only{display:none!important}.wq{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.chip.s-warn{background:#FFF1D6;color:#8A5A00}.ivbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 16px}@media(max-width:700px){.ivbar{grid-template-columns:1fr}}.alts{display:grid;gap:8px}.alt-opt{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;font:inherit}.alt-opt b{font-weight:700}.alt-opt small{color:var(--muted);font-size:13px}.alt-opt .r{text-align:right;white-space:nowrap}.alt-opt[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft,rgba(16,138,70,.08));box-shadow:0 0 0 1px var(--accent) inset}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
 .seg button{border:0;background:none;color:var(--ink);padding:8px 16px;font-weight:600;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line-strong)}
@@ -713,8 +713,10 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <label class="fld"><span class="lab">Loại</span><select class="txt" id="mt-kind"><option value="service">Bảo dưỡng</option><option value="repair">Sửa chữa</option><option value="oil">Thay nhớt</option></select></label>
         <label class="fld"><span class="lab">Chi phí (không bắt buộc)</span><span class="inp"><input id="mt-cost" type="text" inputmode="numeric" placeholder="1.500.000"><em>đồng</em></span></label>
         <label class="fld" style="grid-column:1/-1"><span class="lab">Nội dung</span><input class="txt" id="mt-desc" type="text" maxlength="300" placeholder="Ví dụ: Thay nhớt, lọc nhớt, kiểm tra phanh"></label>
-        <div class="fld" id="mt-warr-wrap" style="grid-column:1/-1"><label class="lab" for="mt-warr">Bảo hành đến ngày (không bắt buộc)</label><span class="inp"><input id="mt-warr" type="text" inputmode="numeric" placeholder="31/12/2027"><em>ngày/tháng/năm</em></span>
-          <span class="wq"><button class="btn small" type="button" data-wm="3">+3 tháng</button><button class="btn small" type="button" data-wm="6">+6 tháng</button><button class="btn small" type="button" data-wm="12">+1 năm</button><button class="btn small" type="button" data-wm="24">+2 năm</button><span class="sec-sub" style="align-self:center">Bấm để tính từ hôm nay, hoặc tự nhập ngày hết bảo hành.</span></span></div>
+        <div class="fld" id="mt-warr-wrap" style="grid-column:1/-1"><span class="lab">Bảo hành theo hợp đồng với gara (không bắt buộc)</span>
+          <label class="wchk"><input type="checkbox" id="mt-wk-work"><span><b>Công việc sửa chữa</b> <small>6 tháng hoặc 10.000 km, cái nào đến trước</small></span></label>
+          <label class="wchk"><input type="checkbox" id="mt-wk-part"><span><b>Phụ tùng chính hiệu</b> <small>1 năm hoặc 20.000 km, cái nào đến trước</small></span></label>
+          <span class="sec-sub" style="margin-top:4px">Tích loại bảo hành áp dụng cho lần sửa này, có thể tích cả hai. Web tự tính còn bao nhiêu ngày và bao nhiêu km.</span></div>
         <label class="fld" style="grid-column:1/-1"><span class="lab">Nơi thực hiện (không bắt buộc)</span><input class="txt" id="mt-place" type="text" list="dl-mt-places" maxlength="120" placeholder="Ví dụ: Gara Hoàng Phát"></label>
         <div class="fld" style="grid-column:1/-1"><span class="lab">Hóa đơn đỏ, hình ảnh, file (không bắt buộc)</span>
           <div class="mpick"><button class="btn" type="button" id="mt-any">Đính kèm hình ảnh, file PDF</button></div>
@@ -745,7 +747,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th>Lần thay nhớt gần nhất</th><th>Đã chạy từ lần thay (km)</th><th>Còn lại đến hạn (km)</th><th style="text-align:left">Trạng thái</th></tr></thead><tbody id="mt-oil"></tbody></table></div>
       <p class="sec-sub" id="mt-oilnote" style="margin-top:8px"></p>
       <div class="sec-head" style="margin-top:22px"><h2>Bảo hành</h2></div>
-      <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th style="text-align:left">Hạng mục</th><th>Ngày làm</th><th>Tổng thời gian bảo hành</th><th>Bảo hành đến</th><th style="text-align:left">Tình trạng</th></tr></thead><tbody id="mt-wr"></tbody></table></div>
+      <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th style="text-align:left">Hạng mục</th><th>Ngày làm</th><th style="text-align:left">Loại bảo hành</th><th>Còn lại (ngày)</th><th>Còn lại (km)</th><th style="text-align:left">Tình trạng</th></tr></thead><tbody id="mt-wr"></tbody></table></div>
     </section>
   </div>
 
@@ -850,7 +852,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th>Lần thay nhớt gần nhất</th><th>Đã chạy từ lần thay (km)</th><th>Còn lại đến hạn (km)</th><th style="text-align:left">Trạng thái</th></tr></thead><tbody id="sx-oil"></tbody></table></div>
       <p class="sec-sub" id="sx-oilnote" style="margin-top:8px"></p>
       <div class="sec-head" style="margin-top:22px"><h2>Bảo hành</h2></div>
-      <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th style="text-align:left">Hạng mục</th><th>Ngày làm</th><th>Tổng thời gian bảo hành</th><th>Bảo hành đến</th><th style="text-align:left">Tình trạng</th></tr></thead><tbody id="sx-wr"></tbody></table></div>
+      <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th style="text-align:left">Hạng mục</th><th>Ngày làm</th><th style="text-align:left">Loại bảo hành</th><th>Còn lại (ngày)</th><th>Còn lại (km)</th><th style="text-align:left">Tình trạng</th></tr></thead><tbody id="sx-wr"></tbody></table></div>
     </section>
 </div>
 </div>
@@ -3134,13 +3136,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---------- Sửa chữa và bảo dưỡng ---------- */
   var maint={}, maintPending=new Map(), maintConfirm=null, maintConfirmT=null, maintPlateKey='';
   var KIND_TXT={service:'Bảo dưỡng',repair:'Sửa chữa',oil:'Thay nhớt'}, OIL_KM=6000, OIL_SOON=500;
+  var WARR={work:{label:'Công việc sửa chữa',months:6,km:10000},part:{label:'Phụ tùng chính hiệu',months:12,km:20000}}, WARR_SOON_DAYS=30, WARR_SOON_KM=1000;
+  function cleanWk(a){var o=[];if(Array.isArray(a)){['work','part'].forEach(function(t){if(a.indexOf(t)>=0) o.push(t);});}return o;}
   function cleanMaint(id,x){
     if(!x||typeof x!=='object') return null;
     var plate=String(x.plate==null?'':x.plate).trim(), desc=String(x.desc==null?'':x.desc).trim();
     var date=Number(x.date), at=Number(x.at), cost=(x.cost==null||x.cost==='')?null:Number(x.cost);
     if(!plate||!desc||!isFinite(date)) return null;
     if(cost!=null&&(!isFinite(cost)||cost<0)) cost=null;
-    return {id:String(id),plate:plate,kind:x.kind==='repair'?'repair':x.kind==='oil'?'oil':'service',warr:numOrNull(x.warr),kmb:numOrNull(x.kmb),desc:desc.slice(0,300),place:String(x.place==null?'':x.place).trim().slice(0,120),cost:cost,media:cleanMedia(x.media),date:date,at:isFinite(at)?at:date};
+    return {id:String(id),plate:plate,kind:x.kind==='repair'?'repair':x.kind==='oil'?'oil':'service',wk:cleanWk(x.wk),desc:desc.slice(0,300),place:String(x.place==null?'':x.place).trim().slice(0,120),cost:cost,media:cleanMedia(x.media),date:date,at:isFinite(at)?at:date};
   }
   var nfD=new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0});
   function moneyTxt(v){return nfD.format(v)+' đ';}
@@ -3160,24 +3164,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     return t;
   }
   function addMonthsMs(ms,n){var d=new Date(ms),t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+n,1),last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+n+1,0)).getUTCDate();return Date.UTC(new Date(t).getUTCFullYear(),new Date(t).getUTCMonth(),Math.min(d.getUTCDate(),last));}
-  function warrInfo(warr){
-    if(warr==null) return null;
-    var days=Math.round((warr-dayStart(nowNaive()))/864e5);
-    if(days<0) return {st:'over',days:days,txt:'Đã hết bảo hành'};
-    if(days===0) return {st:'soon',days:0,txt:'Hết bảo hành hôm nay'};
-    return {st:days<=30?'soon':'ok',days:days,txt:'Còn bảo hành '+days+' ngày'};
+  function kmAfter(plate,m){
+    var d0=Math.floor(dayStart(m.date)/864e5), km=0, miss=0;
+    Object.keys(trips).forEach(function(k){
+      var t=trips[k]; if(t.plate!==plate) return;
+      var d=Math.floor(dayStart(t.start)/864e5); if(d<=d0&&!(t.at>m.at)) return;
+      if(t.km==null) miss++; else km+=t.km;
+    });
+    return {km:km,miss:miss};
   }
-  function warrTotal(m){
-    if(m.warr==null) return '';
-    var d0=dayStart(m.date), days=Math.round((m.warr-d0)/864e5);
-    if(days<=0) return '';
-    for(var k=1;k<=120;k++){if(addMonthsMs(d0,k)===m.warr) return (k%12===0?(k/12)+' năm':k+' tháng');}
-    return days+' ngày';
+  function warrItems(m){
+    var out=[];
+    (m.wk||[]).forEach(function(t){
+      var W=WARR[t]; if(!W) return;
+      var end=addMonthsMs(dayStart(m.date),W.months), days=Math.round((end-dayStart(nowNaive()))/864e5), ka=kmAfter(m.plate,m), left=W.km-ka.km;
+      var overT=days<0, overK=left<0, st, txt;
+      if(overT||overK){st='over';txt='Hết bảo hành ('+(overT&&overK?'hết theo thời gian và km':overT?'hết theo thời gian':'hết theo km')+')';}
+      else{st=(days<=WARR_SOON_DAYS||left<=WARR_SOON_KM)?'soon':'ok';txt='Còn '+(days===0?'hết hôm nay':days+' ngày')+' hoặc '+nfK.format(left)+' km';}
+      out.push({m:m,t:t,label:W.label,limit:(W.months%12===0?(W.months/12)+' năm':W.months+' tháng')+' hoặc '+nfK.format(W.km)+' km',end:end,days:days,kmUsed:ka.km,kmLeft:left,miss:ka.miss,st:st,txt:txt});
+    });
+    return out;
   }
+  function warrText(m){return warrItems(m).map(function(w){return w.label+': '+w.txt;}).join('; ');}
   function warrCell(m){
-    if(m.warr==null) return '<span class="dash">—</span>';
-    var w=warrInfo(m.warr), t=warrTotal(m);
-    return '<div>'+(t?'Tổng '+esc(t)+', ':'')+'đến '+dmyFull(m.warr)+'</div><div style="margin-top:4px">'+stChip(w.st,w.txt)+'</div>';
+    var it=warrItems(m);
+    if(!it.length) return '<span class="dash">—</span>';
+    return it.map(function(w){return '<div style="margin-bottom:6px"><div><small style="color:var(--muted)">'+esc(w.label)+'</small></div>'+stChip(w.st,w.txt)+'</div>';}).join('');
+  }
+  function warrRows(){
+    var all=[];
+    Object.keys(maint).forEach(function(k){warrItems(maint[k]).forEach(function(w){all.push(w);});});
+    return all.sort(function(a,b){var oa=a.st==='over'?1:0,ob=b.st==='over'?1:0;return oa-ob||a.days-b.days;});
   }
   function oilStatus(){
     var today=Math.floor(dayStart(nowNaive())/864e5);
@@ -3186,7 +3203,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       Object.keys(maint).forEach(function(k){var m=maint[k];if(m.plate===v.id&&m.kind==='oil'&&(!last||m.date>last.date||(m.date===last.date&&m.at>last.at))) last=m;});
       var o={id:v.id,last:last,km:null,left:null,st:'none',noKm:0};
       if(!last) return o;
-      var d0=Math.floor(dayStart(last.date)/864e5), km=last.kmb||0;
+      var d0=Math.floor(dayStart(last.date)/864e5), km=0;
       Object.keys(trips).forEach(function(k){
         var t=trips[k]; if(t.plate!==v.id) return;
         var d=Math.floor(dayStart(t.start)/864e5); if(d<=d0&&!(t.at>last.at)) return; // chuyến ghi sau lúc thay nhớt (kể cả cùng ngày) đều được tính
@@ -3202,12 +3219,6 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var cls=st==='over'?'over':st==='soon'?'slight':st==='ok'?'ok':'';
     return '<span class="chip'+(cls?' s-'+cls:'')+'">'+esc(txt)+'</span>';
   }
-  function warrList(){
-    return Object.keys(maint).map(function(k){return maint[k];}).filter(function(m){return m.warr!=null;}).sort(function(a,b){
-      var ia=warrInfo(a.warr).days<0?1:0, ib=warrInfo(b.warr).days<0?1:0;
-      return ia-ib||a.warr-b.warr;
-    });
-  }
   function renderOilWarr(pre){
     var body=$(pre+'-oil'); if(!body) return;
     var rows=oilStatus(), noKm=0;
@@ -3216,11 +3227,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       return '<tr><td><span class="plate-sm">'+esc(fmtPlate(o.id))+'</span></td><td>'+(o.last?dmyFull(o.last.date):'—')+'</td><td class="num">'+(o.km!=null?nfK.format(o.km):'—')+'</td><td class="num">'+(o.left!=null?(o.left<0?'Quá '+nfK.format(-o.left):nfK.format(o.left)):'—')+'</td><td style="text-align:left">'+stChip(o.st,OIL_TXT[o.st])+'</td></tr>';
     }).join(''):'<tr><td class="empty" colspan="5">Chưa có xe nào trong danh sách.</td></tr>';
     $(pre+'-oilnote').textContent=(noKm?'Có '+noKm+' chuyến chưa có số km nên chưa được cộng vào. ':'')+'Khi ghi sửa chữa, bảo dưỡng, chọn loại "Thay nhớt" để bắt đầu tính lại từ lần thay đó.';
-    var wl=warrList();
-    $(pre+'-wr').innerHTML=wl.length?wl.map(function(m){
-      var w=warrInfo(m.warr);
-      return '<tr><td><span class="plate-sm">'+esc(fmtPlate(m.plate))+'</span></td><td class="wrap" style="text-align:left">'+esc(KIND_TXT[m.kind]+': '+m.desc)+'</td><td class="num">'+dmyFull(m.date)+'</td><td class="num">'+esc(warrTotal(m)||'—')+'</td><td class="num">'+dmyFull(m.warr)+'</td><td style="text-align:left">'+stChip(w.st,w.txt)+'</td></tr>';
-    }).join(''):'<tr><td class="empty" colspan="6">Chưa có hạng mục nào ghi ngày bảo hành.</td></tr>';
+    var wl=warrRows(), miss=0;
+    $(pre+'-wr').innerHTML=wl.length?wl.map(function(w){
+      miss+=w.miss;
+      return '<tr><td><span class="plate-sm">'+esc(fmtPlate(w.m.plate))+'</span></td><td class="wrap" style="text-align:left">'+esc(KIND_TXT[w.m.kind]+': '+w.m.desc)+'</td><td class="num">'+dmyFull(w.m.date)+'</td><td style="text-align:left">'+esc(w.label)+'<br><small style="color:var(--muted)">'+esc(w.limit)+'</small></td><td class="num">'+(w.days<0?'Quá '+(-w.days):w.days)+'</td><td class="num">'+(w.kmLeft<0?'Quá '+nfK.format(-w.kmLeft):nfK.format(w.kmLeft))+'</td><td style="text-align:left">'+stChip(w.st,w.txt)+'</td></tr>';
+    }).join(''):'<tr><td class="empty" colspan="7">Chưa có hạng mục nào được tích bảo hành.</td></tr>';
   }
 
   function renderMaint(){
@@ -3253,7 +3264,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     await ready;
     setStatus('saving');
     try{
-      if(mode==='db') await db.doc('maint/'+m.id).set({plate:m.plate,kind:m.kind,warr:m.warr==null?null:m.warr,kmb:m.kmb==null?null:m.kmb,desc:m.desc,place:m.place,cost:m.cost,media:m.media,date:m.date,at:m.at});
+      if(mode==='db') await db.doc('maint/'+m.id).set({plate:m.plate,kind:m.kind,wk:m.wk||[],desc:m.desc,place:m.place,cost:m.cost,media:m.media,date:m.date,at:m.at});
       else persistLocal();
       if(maintPending.get(m.id)===m) maintPending.delete(m.id);
       setStatus('saved');
@@ -3301,10 +3312,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(!plate){mtErr('Chọn biển số xe.');return;}
     if(!desc){mtErr('Nhập nội dung sửa chữa hoặc bảo dưỡng.');return;}
     if(!cost.ok){mtErr('Chi phí chưa đúng. Chỉ nhập số, ví dụ 1.500.000.');return;}
-    var warr=null, wv=$('mt-warr').value.trim();
-    if(wv){warr=parseDMY(wv);if(warr==null){mtErr('Ngày bảo hành chưa đúng. Nhập dạng ngày/tháng/năm, ví dụ 31/12/2027.');return;}}
-    var kindV=$('mt-kind').value==='repair'?'repair':$('mt-kind').value==='oil'?'oil':'service', mdate=null, kmb=null;
-    if(kindV==='oil') warr=null;
+    var kindV=$('mt-kind').value==='repair'?'repair':$('mt-kind').value==='oil'?'oil':'service', wk=[];
+    if(kindV!=='oil'){if($('mt-wk-work').checked) wk.push('work');if($('mt-wk-part').checked) wk.push('part');}
     mtErr('');mtBusy=true;$('mt-submit').disabled=true;
     var done=[],api=null;
     if(mtFiles.length){
@@ -3324,9 +3333,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     }
     var nn=nowNaive();
-    var m={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,kind:kindV,warr:warr,kmb:kmb,desc:desc.slice(0,300),place:$('mt-place').value.trim().slice(0,120),cost:cost.v,media:done,date:mdate!=null?mdate:dayStart(nn),at:Date.now()};
+    var m={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),plate:plate,kind:kindV,wk:wk,desc:desc.slice(0,300),place:$('mt-place').value.trim().slice(0,120),cost:cost.v,media:done,date:dayStart(nn),at:Date.now()};
     maint[m.id]=m;maintPending.set(m.id,m);
-    $('mt-desc').value='';$('mt-cost').value='';$('mt-warr').value='';clearMtFiles();
+    $('mt-desc').value='';$('mt-cost').value='';$('mt-wk-work').checked=false;$('mt-wk-part').checked=false;clearMtFiles();
     mtBusy=false;$('mt-submit').disabled=false;$('mt-prog').textContent='';
     renderMaint();renderHomeIf();
     writeMaint(m);
@@ -3350,9 +3359,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     renderMaint();renderHomeIf();
   }
   $('mt-form').addEventListener('submit',function(e){e.preventDefault();addMaint();});
-  function syncOilX(){var oil=$('mt-kind').value==='oil';$('mt-warr-wrap').style.display=oil?'none':'';if(oil){$('mt-warr').value='';if(!$('mt-desc').value.trim()) $('mt-desc').value='Thay nhớt';}}
+  function syncOilX(){var oil=$('mt-kind').value==='oil';$('mt-warr-wrap').style.display=oil?'none':'';if(oil){$('mt-wk-work').checked=false;$('mt-wk-part').checked=false;if(!$('mt-desc').value.trim()) $('mt-desc').value='Thay nhớt';}}
   $('mt-kind').addEventListener('change',syncOilX);
-  Array.prototype.forEach.call(document.querySelectorAll('[data-wm]'),function(b){b.addEventListener('click',function(){var t=addMonthsMs(dayStart(nowNaive()),Number(b.getAttribute('data-wm')));$('mt-warr').value=p2(new Date(t).getUTCDate())+'/'+p2(new Date(t).getUTCMonth()+1)+'/'+new Date(t).getUTCFullYear();});});
   $('mt-filter').addEventListener('change',renderMaint);
   $('mt-any').addEventListener('click',function(){$('mt-in-any').click();});
   $('mt-in-any').addEventListener('change',function(){addMtFiles(this.files);this.value='';});
@@ -3795,16 +3803,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var cols4=[{h:'Bắt đầu chạy',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Tài xế',w:24,al:'left'},{h:'Nơi đi',w:32,al:'left',wrap:true},{h:'Nơi đến',w:32,al:'left',wrap:true},{h:'Quãng đường (km)',w:18,fmt:L1,sum:true},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
     if(want('trips')) sheet('Sổ hành trình','Sổ hành trình xe',cols4,tripsL.map(function(t){return [new Date(t.start),fmtPlate(t.plate),t.driver,t.from,t.to,t.km,atDate(t.at)];}),{totals:true,totalLabel:'Tổng',notes:tripsL.length?['Tổng số chuyến trong kỳ: '+tripsL.length+'.','Quãng đường tính theo tuyến đã lưu hoặc Google Maps (chuyến hai chiều đã nhân đôi), chỉ để tham khảo; số km thực tế xem ở dữ liệu Adsun.']:[]});
     // 5. Sửa chữa và bảo dưỡng
-    var cols5=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Loại',w:13,al:'left'},{h:'Nội dung',w:46,al:'left',wrap:true},{h:'Nơi thực hiện',w:26,al:'left',wrap:true},{h:'Chi phí',w:18,fmt:MONEY,sum:true},{h:'Tổng thời gian bảo hành',w:20,al:'left'},{h:'Bảo hành đến',w:15,fmt:'dd/mm/yyyy',al:'left'},{h:'Tình trạng bảo hành',w:24,al:'left'},{h:'Số tệp đính kèm',w:12,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
-    if(want('maint')) sheet('Sửa chữa & bảo dưỡng','Sửa chữa và bảo dưỡng',cols5,maintL.map(function(m){return [new Date(m.date),fmtPlate(m.plate),KIND_TXT[m.kind],m.desc,m.place||null,m.cost,m.warr!=null?(warrTotal(m)||null):null,m.warr!=null?new Date(m.warr-tz):null,m.warr!=null?warrInfo(m.warr).txt:null,(m.media||[]).length,atDate(m.at)];}),{totals:true,totalLabel:'Tổng',rowH:24});
+    var cols5=[{h:'Ngày',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Loại',w:13,al:'left'},{h:'Nội dung',w:46,al:'left',wrap:true},{h:'Nơi thực hiện',w:26,al:'left',wrap:true},{h:'Chi phí',w:18,fmt:MONEY,sum:true},{h:'Bảo hành',w:50,al:'left',wrap:true},{h:'Số tệp đính kèm',w:12,fmt:'#,##0'},{h:'Ghi lúc',w:20,fmt:'dd/mm/yyyy hh:mm',al:'left'}];
+    if(want('maint')) sheet('Sửa chữa & bảo dưỡng','Sửa chữa và bảo dưỡng',cols5,maintL.map(function(m){return [new Date(m.date),fmtPlate(m.plate),KIND_TXT[m.kind],m.desc,m.place||null,m.cost,warrText(m)||null,(m.media||[]).length,atDate(m.at)];}),{totals:true,totalLabel:'Tổng',rowH:24});
     if(want('maint')){
       var OSX={none:'Chưa ghi lần thay nhớt',ok:'Bình thường',soon:'Sắp đến hạn thay nhớt',over:'Quá hạn thay nhớt'};
       var colsO=[{h:'Biển số xe',w:15,al:'left'},{h:'Lần thay nhớt gần nhất',w:20,fmt:'dd/mm/yyyy',al:'left'},{h:'Đã chạy từ lần thay (km)',w:20,fmt:L1},{h:'Còn lại đến hạn thay (km)',w:20,fmt:LF},{h:'Trạng thái',w:26,al:'left'}];
       var rowsO=oilStatus().map(function(o){return [fmtPlate(o.id),o.last?new Date(o.last.date-tz):null,o.km,o.left,OSX[o.st]];});
       sheet('Thay nhớt','Theo dõi thay nhớt (cứ '+nfK.format(OIL_KM)+' km thay một lần)',colsO,rowsO,{style:function(row,vals){var st=vals[4],c=row.getCell(5);if(st===OSX.over){c.font={name:'Calibri',size:11,bold:true,color:{argb:'FFB3261E'}};c.fill=xFill('FFFDE7E5');}else if(st===OSX.soon){c.font={name:'Calibri',size:11,bold:true,color:{argb:'FF8A5A00'}};c.fill=xFill('FFFFF1D6');}},notes:['Số km cộng từ Sổ hành trình kể từ lần thay nhớt gần nhất. Cảnh báo sắp đến hạn khi còn dưới '+OIL_SOON+' km. Km chỉ để tham khảo; số km thực tế xem ở dữ liệu Adsun.']});
-      var colsW=[{h:'Biển số xe',w:15,al:'left'},{h:'Hạng mục',w:44,al:'left',wrap:true},{h:'Ngày làm',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Tổng thời gian bảo hành',w:20,al:'left'},{h:'Bảo hành đến',w:15,fmt:'dd/mm/yyyy',al:'left'},{h:'Còn lại (ngày)',w:14,fmt:'#,##0;-#,##0;0'},{h:'Tình trạng',w:26,al:'left'}];
-      var rowsW=warrList().map(function(m){var w=warrInfo(m.warr);return [fmtPlate(m.plate),KIND_TXT[m.kind]+': '+m.desc,new Date(m.date-tz),warrTotal(m)||null,new Date(m.warr-tz),w.days,w.txt];});
-      sheet('Bảo hành','Theo dõi bảo hành',colsW,rowsW,{style:function(row,vals){var st=vals[6],c=row.getCell(7);if(st==='Đã hết bảo hành'){c.font={name:'Calibri',size:11,bold:true,color:{argb:'FFB3261E'}};c.fill=xFill('FFFDE7E5');}else if(vals[5]<=30){c.font={name:'Calibri',size:11,bold:true,color:{argb:'FF8A5A00'}};c.fill=xFill('FFFFF1D6');}},notes:['Tình trạng tính theo ngày hôm nay. Sắp hết bảo hành khi còn từ 30 ngày trở xuống.']});
+      var colsW=[{h:'Biển số xe',w:15,al:'left'},{h:'Hạng mục',w:40,al:'left',wrap:true},{h:'Ngày làm',w:14,fmt:'dd/mm/yyyy',al:'left'},{h:'Loại bảo hành',w:24,al:'left'},{h:'Điều kiện hợp đồng',w:26,al:'left'},{h:'Hết hạn theo thời gian',w:16,fmt:'dd/mm/yyyy',al:'left'},{h:'Còn lại (ngày)',w:14,fmt:'#,##0;-#,##0;0'},{h:'Còn lại (km)',w:14,fmt:'#,##0;-#,##0;0'},{h:'Tình trạng',w:36,al:'left'}];
+      var rowsW=warrRows().map(function(w){return [fmtPlate(w.m.plate),KIND_TXT[w.m.kind]+': '+w.m.desc,new Date(w.m.date),w.label,w.limit,new Date(w.end),w.days,w.kmLeft,w.txt];});
+      sheet('Bảo hành','Theo dõi bảo hành theo hợp đồng với gara',colsW,rowsW,{style:function(row,vals){var st=vals[8],c=row.getCell(9);if(/^Hết bảo hành/.test(st)){c.font={name:'Calibri',size:11,bold:true,color:{argb:'FFB3261E'}};c.fill=xFill('FFFDE7E5');}else if(vals[6]<=WARR_SOON_DAYS||vals[7]<=WARR_SOON_KM){c.font={name:'Calibri',size:11,bold:true,color:{argb:'FF8A5A00'}};c.fill=xFill('FFFFF1D6');}},notes:['Bảo hành hết khi một trong hai điều kiện (thời gian hoặc km) đến trước. Số km cộng từ Sổ hành trình kể từ lần sửa, chỉ để tham khảo; nên đối chiếu số km đồng hồ hoặc dữ liệu Adsun khi gần mốc.','Sắp hết bảo hành khi còn từ '+WARR_SOON_DAYS+' ngày hoặc '+nfK.format(WARR_SOON_KM)+' km trở xuống.']});
     }
     return wb;
   }
