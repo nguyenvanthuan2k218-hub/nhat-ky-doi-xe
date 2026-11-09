@@ -671,7 +671,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           <input id="rf-in-any" type="file" accept="image/*,video/*" multiple hidden>
           <div class="mthumbs" id="rf-thumbs"></div>
           <div id="rf-ocr-row" style="margin-top:8px;display:none;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn small" type="button" id="rf-ocr">Đọc lại số từ ảnh đầu tiên</button><span class="sec-sub" id="rf-ocr-note" role="status"></span></div>
-          <span class="sec-sub" style="margin-top:6px">Ví dụ: ảnh đồng hồ xăng, ảnh hóa đơn, video lúc đổ. Tối đa 6 tệp, mỗi tệp không quá 20 MB.</span>
+          <span class="sec-sub" style="margin-top:6px">Ví dụ: ảnh đồng hồ xăng, ảnh hóa đơn, video lúc đổ. Tối đa 6 tệp, mỗi tệp không quá 50 MB.</span>
         </div>
         <div class="tform-act"><span class="sec-sub" id="rf-prog" role="status" style="margin-right:auto"></span><button class="btn primary" type="submit" id="rf-submit">Ghi vào sổ</button></div>
       </form>
@@ -722,7 +722,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           <div class="mpick"><button class="btn" type="button" id="mt-any">Đính kèm hình ảnh, file PDF</button></div>
           <input id="mt-in-any" type="file" accept="image/*,application/pdf,.pdf" multiple hidden>
           <div class="mthumbs" id="mt-thumbs"></div>
-          <span class="sec-sub" style="margin-top:6px">Chụp hoặc chọn ảnh hóa đơn, hoặc file PDF. Tối đa 6 tệp, mỗi tệp không quá 20 MB.</span>
+          <span class="sec-sub" style="margin-top:6px">Chụp hoặc chọn ảnh hóa đơn, hoặc file PDF. Tối đa 6 tệp, mỗi tệp không quá 50 MB.</span>
         </div>
         <div class="tform-act"><span class="sec-sub" id="mt-prog" role="status" style="margin-right:auto"></span><button class="btn primary" type="submit" id="mt-submit">Ghi vào sổ</button></div>
         <datalist id="dl-mt-places"></datalist>
@@ -2810,7 +2810,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   function rfErr(msg){var e=$('rf-err');e.textContent=msg||'';e.hidden=!msg;}
   /* --- Hình ảnh, video --- */
-  var MAX_FILES=6, MAX_BYTES=20*1024*1024, mediaApi=null, urlCache=new Map(), rfFiles=[], rfBusy=false;
+  var MAX_FILES=6, MAX_BYTES=50*1024*1024, mediaApi=null, urlCache=new Map(), rfFiles=[], rfBusy=false;
   function idbOpen(){
     return new Promise(function(res,rej){
       var q=indexedDB.open('phucan-media',1);
@@ -2877,7 +2877,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     Array.prototype.forEach.call(list,function(f){
       var isI=f.type.indexOf('image/')===0, isV=f.type.indexOf('video/')===0;
       if(!isI&&!isV){errs.push('Tệp "'+f.name+'" không phải hình ảnh hoặc video.');return;}
-      if(f.size>MAX_BYTES){errs.push('"'+f.name+'" lớn hơn 20 MB. Với video, hãy quay ngắn hơn hoặc chọn độ phân giải thấp hơn.');return;}
+      if(f.size>MAX_BYTES){errs.push('"'+f.name+'" lớn hơn 50 MB. Với video, hãy quay ngắn hơn hoặc chọn độ phân giải thấp hơn.');return;}
       if(rfFiles.length>=MAX_FILES){errs.push('Chỉ được đính kèm tối đa '+MAX_FILES+' tệp.');return;}
       rfFiles.push({file:f,url:URL.createObjectURL(f),isV:isV});
     });
@@ -3292,7 +3292,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     Array.prototype.forEach.call(list,function(f){
       var isI=f.type.indexOf('image/')===0, isP=f.type==='application/pdf'||/\.pdf$/i.test(f.name);
       if(!isI&&!isP){errs.push('Tệp "'+f.name+'" không phải hình ảnh hoặc PDF.');return;}
-      if(f.size>MAX_BYTES){errs.push('"'+f.name+'" lớn hơn 20 MB.');return;}
+      if(f.size>MAX_BYTES){errs.push('"'+f.name+'" lớn hơn 50 MB.');return;}
       if(mtFiles.length>=MAX_FILES){errs.push('Chỉ được đính kèm tối đa '+MAX_FILES+' tệp.');return;}
       if(isP&&f.type!=='application/pdf') f=new File([f],f.name,{type:'application/pdf'});
       mtFiles.push({file:f,url:isI?URL.createObjectURL(f):'',isP:isP&&!isI});
@@ -4212,21 +4212,36 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       cache.fuel=j.fuel||[];cache.cfg=j.config||null;cache.trips=j.trips||[];cache.maint=j.maint||[];cache.refuel=j.refuel||[];loaded=true;emit();
     }
     async function post(body){return call(body);}
+    var PART=3*1024*1024; // cắt tệp thành từng phần 3 MB để không vượt giới hạn mỗi lần gửi của Google
+    function b64(blob){return new Promise(function(res,rej){var fr=new FileReader();fr.onload=function(){res(String(fr.result).split(',')[1]||'');};fr.onerror=function(){rej(fr.error);};fr.readAsDataURL(blob);});}
     var media={
       put:async function(blob,name){
-        var data=await new Promise(function(res,rej){var fr=new FileReader();fr.onload=function(){res(String(fr.result).split(',')[1]||'');};fr.onerror=function(){rej(fr.error);};fr.readAsDataURL(blob);});
-        var j=await post({op:'putMedia',name:name,mime:blob.type||'application/octet-stream',data:data});
-        if(!j||!j.id) throw new Error('upload');
-        return j.id;
+        var ids=[],n=Math.max(1,Math.ceil(blob.size/PART));
+        try{
+          for(var k=0;k<n;k++){
+            var data=await b64(blob.slice(k*PART,(k+1)*PART));
+            var j=await post({op:'putMedia',name:n>1?name+'.part'+(k+1):name,mime:n>1?'application/octet-stream':(blob.type||'application/octet-stream'),data:data});
+            if(!j||!j.id) throw new Error('upload');
+            ids.push(j.id);
+          }
+        }catch(e){ids.forEach(function(id){post({op:'delMedia',id:id}).catch(function(){});});throw e;}
+        return ids.join(',');
       },
       get:async function(m){
-        var j=await call({op:'getMedia',mediaId:m.id});
-        var bin=atob(j.data),u8=new Uint8Array(bin.length);
-        for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
-        return URL.createObjectURL(new Blob([u8],{type:j.mime||'application/octet-stream'}));
+        var parts=[],mime='application/octet-stream';
+        var ids=String(m.id).split(',');
+        for(var k=0;k<ids.length;k++){
+          var j=await call({op:'getMedia',mediaId:ids[k]});
+          if(ids.length===1) mime=j.mime||mime;
+          var bin=atob(j.data),u8=new Uint8Array(bin.length);
+          for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+          parts.push(u8);
+        }
+        return URL.createObjectURL(new Blob(parts,{type:ids.length>1?(m.mime||guessMime(m)):mime}));
       },
-      del:function(m){return post({op:'delMedia',id:m.id});}
+      del:function(m){return Promise.all(String(m.id).split(',').map(function(id){return post({op:'delMedia',id:id});}));}
     };
+    function guessMime(m){var n=String(m.name||'').toLowerCase();return m.type==='video'?(/\.mov$/.test(n)?'video/quicktime':'video/mp4'):m.type==='image'?(/\.png$/.test(n)?'image/png':'image/jpeg'):(/\.pdf$/.test(n)?'application/pdf':'application/octet-stream');}
     return {
       media:media,
       auth:auth,
