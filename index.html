@@ -1822,6 +1822,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     else if(s==='saved') el.textContent='Đã lưu lúc '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
     else if(s==='error') el.textContent=(e&&e.code==='invalid_argument')?'Chưa lưu được: tài khoản này chỉ có quyền xem.':'Chưa lưu được, hãy thử lại sau.';
     else el.textContent=mode==='local'?'Số liệu lưu trên trình duyệt này':'Số liệu tự lưu khi bạn nhập';
+    if(s==='saving') bigToast('saving','Đang ghi vào sổ…');
+    else if(s==='saved') bigToast('ok','Đã ghi sổ thành công');
+    else if(s==='error') bigToast('err','Chưa ghi được vào sổ',(e&&e.code==='invalid_argument')?'Tài khoản này chỉ có quyền xem.':'Hãy kiểm tra mạng rồi thử lại.');
   }
   document.body.appendChild($('btoast'));
   var btTimer=null;
