@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#138A42">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Nhật ký xe">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>Nhật ký đội xe Phúc An</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@500;600&display=swap">
@@ -4388,5 +4396,29 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 })();
 </script>
 
+<script>
+(function(){
+  if(!/^https?:$/.test(location.protocol)) return;
+  if('serviceWorker' in navigator) window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
+  var standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone;
+  if(standalone) return;
+  function got(){try{return localStorage.getItem('phucan-pwa-hide')==='1';}catch(e){return false;}}
+  function hide(){try{localStorage.setItem('phucan-pwa-hide','1');}catch(e){}}
+  function bar(msg,btn,fn){
+    if(got()||document.getElementById('pwa-bar')) return;
+    var d=document.createElement('div');d.id='pwa-bar';
+    d.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;background:#138A42;color:#fff;border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:center;font:600 14px/1.35 system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)';
+    var t=document.createElement('span');t.style.flex='1';t.textContent=msg;d.appendChild(t);
+    if(btn){var b=document.createElement('button');b.textContent=btn;b.style.cssText='border:0;border-radius:10px;padding:9px 14px;font:700 14px system-ui;background:#fff;color:#138A42';b.onclick=function(){fn();d.remove();};d.appendChild(b);}
+    var x=document.createElement('button');x.textContent='✕';x.setAttribute('aria-label','Đóng');x.style.cssText='border:0;background:none;color:#fff;font-size:18px;padding:4px 8px';x.onclick=function(){hide();d.remove();};d.appendChild(x);
+    document.body.appendChild(d);
+  }
+  var dp=null;
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;bar('Cài app Nhật ký xe lên điện thoại để mở nhanh như app thường.','Cài đặt',function(){dp.prompt();dp=null;});});
+  window.addEventListener('appinstalled',function(){hide();var d=document.getElementById('pwa-bar');if(d) d.remove();});
+  var ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(ios) window.addEventListener('load',function(){setTimeout(function(){bar('Cài app: bấm nút Chia sẻ (ô vuông có mũi tên) rồi chọn "Thêm vào MH chính".');},2500);});
+})();
+</script>
 </body>
 </html>
