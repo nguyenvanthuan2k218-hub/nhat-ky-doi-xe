@@ -184,6 +184,12 @@ details.manage[open]>summary{border-bottom:1px solid var(--line)}
 .hint{margin:0;font-size:13px;color:var(--warn)}
 .l-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-top:1px solid var(--line);background:var(--surface-2)}
 .foot-actions{display:flex;flex-wrap:wrap;gap:8px}
+.btoast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:12px;width:max-content;max-width:min(92vw,520px);box-sizing:border-box;padding:14px 20px;border-radius:14px;font-size:17px;font-weight:700;line-height:1.35;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.28);background:#1f6feb;cursor:pointer}
+.btoast[hidden]{display:none}.btoast .bi{flex:none;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-size:17px}
+.btoast[data-k="ok"]{background:#1a7f37}.btoast[data-k="err"]{background:#cf222e}
+.btoast[data-k="saving"] .bi{border:3px solid rgba(255,255,255,.4);border-top-color:#fff;background:none;animation:bsp .8s linear infinite}
+@keyframes bsp{to{transform:rotate(360deg)}}
+.btoast small{display:block;font-weight:500;font-size:13px;opacity:.9}
 .status{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .status::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line-strong)}
 .status[data-s="saved"]::before{background:var(--accent)}
@@ -516,6 +522,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     <div id="rows"></div>
     <div class="l-foot">
       <span class="foot-actions"><button class="btn small" id="fillprev" type="button" hidden>Điền định mức từ tháng trước</button><button class="btn small primary xl-btn" type="button" data-xl="fuel" hidden>Xuất Excel</button><button class="btn small primary" id="export" type="button" hidden>Xuất báo cáo PDF</button></span>
+      <div class="btoast" id="btoast" role="alert" aria-live="assertive" hidden><span class="bi" id="btoast-i"></span><span id="btoast-t"></span></div>
       <span class="status" id="status" data-s="idle" role="status">Số liệu tự lưu khi bạn nhập</span>
     </div>
   </section>
@@ -1816,6 +1823,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     else if(s==='error') el.textContent=(e&&e.code==='invalid_argument')?'Chưa lưu được: tài khoản này chỉ có quyền xem.':'Chưa lưu được, hãy thử lại sau.';
     else el.textContent=mode==='local'?'Số liệu lưu trên trình duyệt này':'Số liệu tự lưu khi bạn nhập';
   }
+  document.body.appendChild($('btoast'));
+  var btTimer=null;
+  function bigToast(k,msg,sub){
+    var el=$('btoast');clearTimeout(btTimer);
+    el.dataset.k=k;$('btoast-i').textContent=k==='ok'?'✓':k==='err'?'!':'';
+    $('btoast-t').innerHTML=esc(msg)+(sub?'<small>'+esc(sub)+'</small>':'');
+    el.hidden=false;
+    if(k==='ok') btTimer=setTimeout(function(){el.hidden=true;},4000);
+  }
+  $('btoast').addEventListener('click',function(){if(this.dataset.k!=='saving') this.hidden=true;});
   function showNotice(msg){var n=$('notice');n.textContent=msg;n.hidden=!msg;}
 
   /* ---------- Lưu ---------- */
@@ -2632,15 +2649,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   async function writeTrip(t){
     await ready;
-    setStatus('saving');
+    setStatus('saving');bigToast('saving','Đang ghi vào sổ hành trình…');
     try{
       if(mode==='db') await db.doc('trips/'+t.id).set({plate:t.plate,driver:t.driver,from:t.from,to:t.to,km:t.km==null?null:t.km,round:!!t.round,alt:t.alt||0,via:t.via||'',start:t.start,at:t.at});
       else persistLocal();
       if(tripPending.get(t.id)===t) tripPending.delete(t.id);
-      setStatus('saved');
+      setStatus('saved');bigToast('ok','Đã ghi sổ hành trình thành công','Xe '+fmtPlate(t.plate)+' · '+t.from+' → '+t.to);
     }catch(e){
       if(tripPending.get(t.id)===t) tripPending.delete(t.id);
-      delete trips[t.id];renderTrips();renderSum();setStatus('error',e);
+      delete trips[t.id];renderTrips();renderSum();setStatus('error',e);bigToast('err','Chưa ghi được vào sổ hành trình','Vui lòng nhập lại hoặc kiểm tra mạng.');
     }
   }
   async function removeTripRemote(t){
@@ -3028,10 +3045,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       if(refuelPending.get(rec.id)===fin) refuelPending.delete(rec.id);
       await jobDel(job.id);
       bgJobs.delete(job.id);showBg();renderHomeIf();
+      bigToast('ok','Đã ghi sổ đổ dầu thành công','Xe '+fmtPlate(rec.plate)+' · '+nfK.format(rec.liters)+' lít');
     }catch(e){
       bgJobs.delete(job.id);
-      if(e&&e.message==='no-assets'){await jobDel(job.id);rfErr('Chưa bật chỗ lưu hình ảnh, video ở bản này.');showBg();return;}
-      rfProg('Chưa tải được ảnh (mạng yếu?). Ứng dụng sẽ tự thử lại, vui lòng chưa đóng trang.');
+      if(e&&e.message==='no-assets'){await jobDel(job.id);rfErr('Chưa bật chỗ lưu hình ảnh, video ở bản này.');bigToast('err','Chưa ghi được vào sổ','Chưa bật chỗ lưu hình ảnh, video ở bản này.');showBg();return;}
+      rfProg('Chưa tải được ảnh (mạng yếu?). Ứng dụng sẽ tự thử lại, vui lòng chưa đóng trang.');bigToast('saving','Đang ghi vào sổ đổ dầu…','Mạng yếu, đang tự thử lại. Vui lòng chưa đóng trang.');
       renderRefuel();
       setTimeout(function(){runJob(job);},15000);
     }
@@ -3069,6 +3087,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var job={id:x.id,uid:me?me.id:'',rec:x,files:files,done:[]};
     await jobPut(job);
     refuel[x.id]=x;refuelPending.set(x.id,x);
+    bigToast('saving','Đang ghi vào sổ đổ dầu…','Đang tải ảnh lên, vui lòng chưa đóng trang');
     $('rf-liters').value='';$('rf-cost').value='';ocrSeq++;ocrNote('');clearRfFiles();
     rfBusy=false;$('rf-submit').disabled=false;
     renderRefuel();renderHomeIf();
@@ -3262,15 +3281,15 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   async function writeMaint(m){
     await ready;
-    setStatus('saving');
+    setStatus('saving');bigToast('saving','Đang ghi vào sổ sửa chữa, bảo dưỡng…');
     try{
       if(mode==='db') await db.doc('maint/'+m.id).set({plate:m.plate,kind:m.kind,wk:m.wk||[],desc:m.desc,place:m.place,cost:m.cost,media:m.media,date:m.date,at:m.at});
       else persistLocal();
       if(maintPending.get(m.id)===m) maintPending.delete(m.id);
-      setStatus('saved');
+      setStatus('saved');bigToast('ok','Đã ghi sổ sửa chữa, bảo dưỡng thành công','Xe '+fmtPlate(m.plate)+' · '+m.desc.slice(0,60));
     }catch(e){
       if(maintPending.get(m.id)===m) maintPending.delete(m.id);
-      delete maint[m.id];renderMaint();renderHomeIf();setStatus('error',e);
+      delete maint[m.id];renderMaint();renderHomeIf();setStatus('error',e);bigToast('err','Chưa ghi được vào sổ','Vui lòng nhập lại hoặc kiểm tra mạng.');
     }
   }
   async function removeMaintRemote(m){
@@ -3315,6 +3334,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var kindV=$('mt-kind').value==='repair'?'repair':$('mt-kind').value==='oil'?'oil':'service', wk=[];
     if(kindV!=='oil'){if($('mt-wk-work').checked) wk.push('work'); else if($('mt-wk-part').checked) wk.push('part');}
     mtErr('');mtBusy=true;$('mt-submit').disabled=true;
+    bigToast('saving','Đang ghi vào sổ…',mtFiles.length?'Đang tải hình ảnh, vui lòng chưa đóng trang':'');
     var done=[],api=null;
     if(mtFiles.length){
       try{
@@ -3328,7 +3348,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }catch(e){
         done.forEach(function(m){try{api.del(m);}catch(_){}});
         mtBusy=false;$('mt-submit').disabled=false;$('mt-prog').textContent='';
-        mtErr(e&&e.message==='no-assets'?'Chưa bật chỗ lưu hình ảnh, file ở bản này.':'Tải lên chưa được. Hãy kiểm tra mạng rồi thử lại, tệp vẫn còn trong ô.');
+        mtErr(e&&e.message==='no-assets'?'Chưa bật chỗ lưu hình ảnh, file ở bản này.':'Tải lên chưa được. Hãy kiểm tra mạng rồi thử lại, tệp vẫn còn trong ô.');bigToast('err','Chưa ghi được vào sổ','Tải hình ảnh chưa được. Kiểm tra mạng rồi thử lại, tệp vẫn còn trong ô.');
         return;
       }
     }
