@@ -630,6 +630,14 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
     </section>
 
+    <section class="only-admin" aria-label="Địa điểm gợi ý">
+      <div class="sec-head"><h2>Địa điểm gợi ý</h2><p class="sec-sub">Chỉ quản trị cao nhất thấy và sửa mục này. Mỗi dòng một địa điểm. Tài xế bấm vào ô Nơi đi hoặc Nơi đến sẽ thấy danh sách này để chọn nhanh. Web không tự nhớ thêm từ các chuyến đã nhập.</p></div>
+      <form class="panel" id="sp-form" autocomplete="off">
+        <label class="fld"><span class="lab">Danh sách địa điểm (mỗi dòng một nơi)</span><textarea class="txt" id="sp-text" rows="8" maxlength="12000" placeholder="Bệnh viện Phúc An&#10;Sở Y tế&#10;Bệnh viện Chợ Rẫy" style="width:100%;resize:vertical;font:inherit"></textarea></label>
+        <div class="tform-act" style="align-items:center"><span class="sec-sub" id="sp-count" style="margin:0 auto 0 0"></span><button class="btn primary" type="submit" id="sp-save" disabled>Lưu danh sách</button></div>
+      </form>
+    </section>
+
     <section class="only-admin" aria-label="Tuyến đường phổ biến">
       <div class="sec-head"><h2>Tuyến đường phổ biến</h2><p class="sec-sub">Chỉ quản trị cao nhất thấy và sửa mục này. Tài xế chọn tuyến để tự điền nơi đi, nơi đến và số km.</p></div>
       <div class="scroll">
@@ -1395,7 +1403,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   var rec={};              // 'YYYY-MM_ID' -> {month,plate,rate,km,actual}
   var vehicles=[];         // [{id,driver}]
   var threshold=10;
-  var idleMin=10, stopMin=60, places=[], routes=[];
+  var idleMin=10, stopMin=60, places=[], routes=[], spots=[];
   var unsaved=new Map(), timers=new Map(), chains=new Map();
   var cfgTimer=null, cfgPending=false, cfgChain=Promise.resolve();
   var db=null, dl=null, mode='init';
@@ -1786,6 +1794,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     });
     return out;
   }
+  function cleanSpots(a){var seen={},o=[];(Array.isArray(a)?a:[]).forEach(function(x){var t=String(x==null?'':x).replace(/\s+/g,' ').trim().slice(0,120),k=t.toLowerCase();if(t&&!seen[k]){seen[k]=1;o.push(t);}});return o.slice(0,200);}
   function cleanExtra(d){
     var ch=false;
     if(typeof d.idleMin==='number'&&isFinite(d.idleMin)&&d.idleMin>0&&d.idleMin!==idleMin){idleMin=d.idleMin;ch=true;}
@@ -1793,6 +1802,10 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(Array.isArray(d.routes)){
       var rl2=cleanRoutes(d.routes);
       if(JSON.stringify(rl2)!==JSON.stringify(routes)){routes=rl2;ch=true;}
+    }
+    if(Array.isArray(d.spots)){
+      var sp=cleanSpots(d.spots);
+      if(JSON.stringify(sp)!==JSON.stringify(spots)){spots=sp;ch=true;}
     }
     if(Array.isArray(d.places)){
       var pl=d.places.map(function(x){return String(x).trim();}).filter(Boolean).slice(0,30);
@@ -1848,7 +1861,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 
   /* ---------- Lưu ---------- */
   function persistLocal(){
-    try{localStorage.setItem(LS_KEY,JSON.stringify({rec:rec,vehicles:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,routes:routes,trips:trips,maint:maint,refuel:refuel}));}catch(e){}
+    try{localStorage.setItem(LS_KEY,JSON.stringify({rec:rec,vehicles:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,routes:routes,spots:spots,trips:trips,maint:maint,refuel:refuel}));}catch(e){}
   }
   function loadLocal(){
     var ok=false;
@@ -1916,7 +1929,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     setStatus('saving');
     try{
       if(mode==='db'){
-        await db.doc('config/main').set({list:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,routes:routes});
+        await db.doc('config/main').set({list:vehicles.map(function(v){return {plate:v.id,driver:v.driver};}),threshold:threshold,idleMin:idleMin,stopMin:stopMin,places:places,routes:routes,spots:spots});
       }else persistLocal();
       setStatus('saved');
     }catch(e){setStatus('error',e);}
@@ -2517,7 +2530,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     var all=Object.keys(trips).map(function(k){return trips[k];});
     $('dl-drivers').innerHTML=uniqSorted(vehicles.map(function(v){return v.driver;}).concat(all.map(function(t){return t.driver;}))).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
-    $('dl-places').innerHTML=uniqSorted(all.map(function(t){return t.from;}).concat(all.map(function(t){return t.to;}))).map(function(x){return '<option value="'+esc(x)+'">';}).join('');
+    renderSpotList();
   }
   function syncDriver(){
     if(me&&isDrv(me.role)){$('trip-driver').value=me.name;$('trip-driver').readOnly=true;return;}
@@ -2529,6 +2542,21 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if(me&&me.role==='admin') return '<input class="kmcell" type="text" inputmode="decimal" data-tkm="'+esc(t.id)+'" value="'+(t.km!=null?numToInput(t.km):'')+'" placeholder="—" aria-label="Số km của chuyến, chỉ quản trị cao nhất sửa được">';
     return t.km!=null?nf1.format(t.km)+(t.round?' <small style="color:var(--muted)">(2 chiều)</small>':''):'—';
   }
+  function renderSpotList(){
+    var h=spots.map(function(x){return '<option value="'+esc(x)+'">';}).join('');
+    if($('dl-places').innerHTML!==h) $('dl-places').innerHTML=h;
+    var ta=$('sp-text'); if(ta&&document.activeElement!==ta&&!spDirty) ta.value=spots.join('\n');
+    var c=$('sp-count'); if(c) c.textContent=spots.length?('Hiện có '+spots.length+' địa điểm.'):'Chưa có địa điểm nào. Tài xế sẽ không thấy gợi ý khi bấm vào ô nơi đi, nơi đến.';
+  }
+  var spDirty=false;
+  $('sp-text').addEventListener('input',function(){spDirty=true;$('sp-save').disabled=false;});
+  $('sp-form').addEventListener('submit',function(e){
+    e.preventDefault();
+    if(!me||me.role!=='admin') return;
+    spots=cleanSpots($('sp-text').value.split('\n'));
+    spDirty=false;$('sp-text').value=spots.join('\n');$('sp-save').disabled=true;
+    scheduleCfg();renderSpotList();
+  });
   function renderRoutes(){
     var sel=$('trip-route'); if(!sel) return;
     var cur=sel.value;
