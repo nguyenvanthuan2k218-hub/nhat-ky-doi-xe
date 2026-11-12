@@ -402,7 +402,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 /* Màn hình chờ khi mở ứng dụng */
-#sp{position:fixed;inset:0;z-index:99999;overflow:hidden;background:linear-gradient(#cfeedd,#e8f7ee 55%,#fff);display:flex;flex-direction:column;align-items:center;transition:opacity .6s}
+#sp{position:fixed;inset:0;z-index:99999;overflow:hidden;background:linear-gradient(#cfeedd,#e8f7ee 55%,#fff);display:flex;flex-direction:column;align-items:center;transition:opacity .35s}
 #sp.out{opacity:0;pointer-events:none}
 .sp-top{margin-top:5vh;text-align:center;color:#0d6b32}
 .sp-top img{display:block;margin:0 auto 8px;width:min(240px,62vw);height:auto}
@@ -493,28 +493,19 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   fill(L1,bs.map(function(b){return '<div class="sp-bld" style="width:'+b[0]+'px;height:'+b[1]+'px"></div>';}));
   fill(L2,['<div class="sp-tree"></div>','<div class="sp-tree" style="margin-right:90px"></div>','<div class="sp-bld" style="width:40px;height:56px;background:#9fd0b3"></div>','<div class="sp-tree"></div>','<div class="sp-tree" style="margin-right:120px"></div>']);
   var msgs=[[0,'Tài xế đang xuất phát…'],[25,'Đang chạy trên đường…'],[55,'Sắp tới nơi rồi…'],[85,'Gần đến đích…'],[100,'Đã đến nơi!']];
-  var t0=performance.now(),MIN=1500,ready=false,tReady=0,pReady=0,done=false;
+  var t0=performance.now(),DUR=1300,done=false;
   var from=-30,to=Math.max(120,window.innerWidth-window.innerWidth*0.04-240);
-  window.__splashDone=function(){if(!ready){ready=true;}};
   function finish(){
     if(done) return; done=true;
     n.textContent='100%';msg.textContent='Đã đến nơi!';sp.classList.add('sp-arrive');
-    setTimeout(function(){sp.classList.add('out');},80);
-    setTimeout(function(){if(sp.parentNode) sp.parentNode.removeChild(sp);},700);
+    setTimeout(function(){sp.classList.add('out');},40);
+    setTimeout(function(){if(sp.parentNode) sp.parentNode.removeChild(sp);},450);
   }
   function step(t){
     if(done) return;
-    var el=t-t0,p;
-    if(!ready&&el>15000){ready=true;}
-    if(!ready) p=0.92*(1-Math.exp(-el/1800));
-    else{
-      if(!tReady){tReady=Math.max(t,t0+MIN-500);pReady=Math.min(0.92*(1-Math.exp(-el/1800)),0.92);}
-      var q=Math.min(1,Math.max(0,(t-tReady)/500)); // ready rồi: chạy nốt quãng còn lại trong ~0,5 giây
-      p=pReady+(1-pReady)*q; if(t<t0+MIN) p=Math.min(p,(t-t0)/MIN);
-      if(p>=1&&t>=t0+MIN-1){p=1;}
-    }
+    var p=Math.min(1,(t-t0)/DUR);
     car.style.left=(from+(to-from)*p)+'px';
-    var v=Math.round(p*100);n.textContent=v+'%';
+    var v=Math.min(100,Math.round(p*20)*5);n.textContent=v+'%'; // nhảy từng 5%
     for(var i=msgs.length-1;i>=0;i--) if(v>=msgs[i][0]){msg.textContent=msgs[i][1];break;}
     if(p>=1) finish(); else requestAnimationFrame(step);
   }
@@ -1968,6 +1959,12 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     $('btoast-t').innerHTML=esc(msg)+(sub?'<small>'+esc(sub)+'</small>':'');
     el.hidden=false;
     if(k==='ok') btTimer=setTimeout(function(){el.hidden=true;},4000);
+  }
+  var syncOn=false;
+  function syncToast(on){
+    var el=$('btoast');
+    if(on){syncOn=true;bigToast('saving','Đang cập nhật dữ liệu mới…','Đang hiện dữ liệu lần trước');}
+    else if(syncOn){syncOn=false;if(el.dataset.k==='saving'&&/cập nhật dữ liệu/.test($('btoast-t').textContent)) el.hidden=true;}
   }
   $('btoast').addEventListener('click',function(){if(this.dataset.k!=='saving') this.hidden=true;});
   function showNotice(msg){var n=$('notice');n.textContent=msg;n.hidden=!msg;}
@@ -4334,6 +4331,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   /* ---------- Kho số liệu dùng chung trên Google Sheets ---------- */
   async function startSheetDb(){
     var API=window.PHUCAN_API, SKEY='phucan-session-sheet';
+    function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null');}catch(e){return null;}}
+    function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+    function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
     function getSess(){try{return JSON.parse(localStorage.getItem(SKEY)||'null');}catch(e){return null;}}
     function setSess(x){try{if(x) localStorage.setItem(SKEY,JSON.stringify(x)); else localStorage.removeItem(SKEY);}catch(e){}}
     async function rawPost(body){
@@ -4353,11 +4353,18 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     var auth={
       resume:async function(){
         var s0=getSess();if(!s0) return null;
-        try{var j=await rawPost({op:'me',uid:s0.id,token:s0.token});return j.user;}
+        var cu=lsGet('phucan-user:'+s0.id);
+        if(cu&&cu.id===s0.id){ // đã đăng nhập từ trước: vào ngay, kiểm tra lại quyền ở nền
+          rawPost({op:'me',uid:s0.id,token:s0.token}).then(function(j){
+            if(JSON.stringify(j.user)!==JSON.stringify(cu)){lsSet('phucan-user:'+s0.id,j.user);if(j.user.role!==cu.role||j.user.name!==cu.name) location.reload();}
+          }).catch(function(e){if(e&&e.code==='unauthorized'){setSess(null);location.reload();}});
+          return cu;
+        }
+        try{var j=await rawPost({op:'me',uid:s0.id,token:s0.token});lsSet('phucan-user:'+s0.id,j.user);return j.user;}
         catch(e){if(e&&e.code==='unauthorized'){setSess(null);return null;}throw e;}
       },
-      login:async function(id){var j=await rawPost({op:'login',id:id});setSess({id:j.user.id,token:j.token});return j.user;},
-      logout:async function(){try{await call({op:'logout'});}catch(e){}setSess(null);},
+      login:async function(id){var j=await rawPost({op:'login',id:id});setSess({id:j.user.id,token:j.token});lsSet('phucan-user:'+j.user.id,j.user);return j.user;},
+      logout:async function(){var s1=getSess();try{await call({op:'logout'});}catch(e){}setSess(null);if(s1){lsDel('phucan-user:'+s1.id);lsDel('phucan-data:'+s1.id);}},
       users:async function(){return (await call({op:'listUsers'})).users;},
       saveUser:async function(d){return (await call({op:'setUser',data:d})).users;},
       delUser:async function(id){return (await call({op:'delUser',id:id})).users;}
@@ -4382,7 +4389,11 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     async function pull(){
       var j=await call({op:'read'});
       cache.fuel=j.fuel||[];cache.cfg=j.config||null;cache.trips=j.trips||[];cache.maint=j.maint||[];cache.refuel=j.refuel||[];loaded=true;emit();
+      var s1=getSess();if(s1) lsSet('phucan-data:'+s1.id,{fuel:cache.fuel,cfg:cache.cfg,trips:cache.trips,maint:cache.maint,refuel:cache.refuel,at:Date.now()});
     }
+    // hiện ngay dữ liệu lần trước (nếu có) trong lúc tải dữ liệu mới
+    var fromCache=false;
+    (function(){var s0=getSess(),d=s0&&lsGet('phucan-data:'+s0.id);if(d&&d.cfg){cache.fuel=d.fuel||[];cache.cfg=d.cfg;cache.trips=d.trips||[];cache.maint=d.maint||[];cache.refuel=d.refuel||[];loaded=true;fromCache=true;}})();
     async function post(body){return call(body);}
     var PART=3*1024*1024; // cắt tệp thành từng phần 3 MB để không vượt giới hạn mỗi lần gửi của Google
     function b64(blob){return new Promise(function(res,rej){var fr=new FileReader();fr.onload=function(){res(String(fr.result).split(',')[1]||'');};fr.onerror=function(){rej(fr.error);};fr.readAsDataURL(blob);});}
@@ -4477,7 +4488,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         return {onSnapshot:function(next){fl.push(next);if(loaded) next(fuelSnap());return function(){};}};
       },
       start:function(){
-        pull().catch(function(){showNotice('Chưa kết nối được kho số liệu Google Sheets. Hãy kiểm tra mạng rồi tải lại trang.');});
+        if(fromCache) syncToast(true);
+        pull().then(function(){if(fromCache) syncToast(false);}).catch(function(){if(fromCache) syncToast(false);showNotice(fromCache?'Chưa tải được dữ liệu mới, đang hiện dữ liệu lần trước. Hãy kiểm tra mạng.':'Chưa kết nối được kho số liệu Google Sheets. Hãy kiểm tra mạng rồi tải lại trang.');});
         function tick(){
           if(document.visibilityState!=='visible') return;
           if(unsaved.size||timers.size||cfgPending) return;
