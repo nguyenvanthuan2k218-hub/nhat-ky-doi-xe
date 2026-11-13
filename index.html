@@ -195,6 +195,8 @@ details.manage[open]>summary{border-bottom:1px solid var(--line)}
 .hint{margin:0;font-size:13px;color:var(--warn)}
 .l-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-top:1px solid var(--line);background:var(--surface-2)}
 .foot-actions{display:flex;flex-wrap:wrap;gap:8px}
+.hist-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 14px;padding:12px 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);font-size:14px}.hist-bar span{flex:1 1 220px}.hist-bar[hidden]{display:none}
+html.hist-need [data-histhide],html.hist-need #home-refuel,html.hist-need #home-trips,html.hist-need #home-maint{display:none!important}
 .mbtn-thumb.mbtn-view{width:auto;height:auto;min-height:36px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap}
 .btoast{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:12px;width:max-content;max-width:min(92vw,520px);box-sizing:border-box;padding:14px 20px;border-radius:14px;font-size:17px;font-weight:700;line-height:1.35;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.28);background:#1f6feb;cursor:pointer}
 .btoast[hidden]{display:none}.btoast .bi{flex:none;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center;font-size:17px}
@@ -702,6 +704,8 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   </div>
 
   <div class="tabpanel" id="tab-trips" role="tabpanel" aria-labelledby="t-trips" hidden>
+  <div class="hist-bar" data-hist hidden><span>Lịch sử các lần đã nhập không tải sẵn để mở app nhanh. Cần xem lại thì bấm nút bên cạnh.</span><button type="button" class="btn" data-hist-btn>Xem lịch sử các lần đã nhập</button></div>
+
     <section class="wform" aria-label="Ghi chuyến đi">
       <div class="sec-head">
         <h2>Ghi chuyến đi</h2>
@@ -725,7 +729,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       <p class="m-err" id="trip-err" role="alert" hidden></p>
     </section>
 
-    <section aria-label="Danh sách chuyến đi">
+    <section aria-label="Danh sách chuyến đi" data-histhide>
       <div class="sec-head">
         <h2 id="trip-title">Các chuyến đi</h2>
         <div class="listbar"><span class="sec-sub" id="trip-count"></span><select class="txt" id="trip-filter" aria-label="Lọc theo xe"></select><button class="btn primary xl-btn" type="button" data-xl="trips" hidden>Xuất báo cáo Excel</button></div>
@@ -787,6 +791,8 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   </div>
 
   <div class="tabpanel" id="tab-refuel" role="tabpanel" aria-labelledby="t-refuel" hidden>
+  <div class="hist-bar" data-hist hidden><span>Lịch sử các lần đã nhập không tải sẵn để mở app nhanh. Cần xem lại thì bấm nút bên cạnh.</span><button type="button" class="btn" data-hist-btn>Xem lịch sử các lần đã nhập</button></div>
+
     <section class="wform" aria-label="Ghi lần đổ dầu">
       <div class="sec-head">
         <h2>Ghi lần đổ dầu</h2>
@@ -808,7 +814,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </form>
       <p class="m-err" id="rf-err" role="alert" hidden></p>
     </section>
-    <section aria-label="Danh sách lần đổ dầu">
+    <section aria-label="Danh sách lần đổ dầu" data-histhide>
       <div class="sec-head">
         <h2 id="rf-title">Các lần đổ dầu</h2>
         <div class="listbar"><span class="sec-sub" id="rf-count"></span><select class="txt" id="rf-filter" aria-label="Lọc theo xe"></select><button class="btn zip-btn" type="button" data-zip="refuel" hidden>Tải hình ảnh, video (ZIP)</button><button class="btn primary xl-btn" type="button" data-xl="refuel" hidden>Xuất báo cáo Excel</button></div>
@@ -820,7 +826,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         </table>
       </div>
     </section>
-    <section aria-label="Tổng số lít theo xe">
+    <section aria-label="Tổng số lít theo xe" data-histhide>
       <div class="sec-head"><h2 id="rf-sum-title">Tổng theo xe</h2></div>
       <div class="scroll">
         <table class="trips" style="min-width:480px">
@@ -834,6 +840,8 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   <dialog id="lb" aria-label="Xem hình ảnh, video"><div id="lb-body"></div><div class="lb-bar"><a class="btn" id="lb-dl" href="#" download hidden style="margin-right:8px;text-decoration:none">Tải về máy</a><button class="btn primary" type="button" id="lb-close">Đóng</button></div></dialog>
 
   <div class="tabpanel" id="tab-maint" role="tabpanel" aria-labelledby="t-maint" hidden>
+  <div class="hist-bar" data-hist hidden><span>Lịch sử các lần đã nhập không tải sẵn để mở app nhanh. Cần xem lại thì bấm nút bên cạnh.</span><button type="button" class="btn" data-hist-btn>Xem lịch sử các lần đã nhập</button></div>
+
     <section class="wform" aria-label="Ghi sửa chữa hoặc bảo dưỡng">
       <div class="sec-head">
         <h2>Ghi sửa chữa, bảo dưỡng</h2>
@@ -860,7 +868,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </form>
       <p class="m-err" id="mt-err" role="alert" hidden></p>
     </section>
-    <section aria-label="Danh sách sửa chữa, bảo dưỡng">
+    <section aria-label="Danh sách sửa chữa, bảo dưỡng" data-histhide>
       <div class="sec-head">
         <h2 id="mt-title">Sửa chữa, bảo dưỡng</h2>
         <div class="listbar"><span class="sec-sub" id="mt-count"></span><select class="txt" id="mt-filter" aria-label="Lọc theo xe"></select><button class="btn zip-btn" type="button" data-zip="maint" hidden>Tải hóa đơn, tệp (ZIP)</button><button class="btn primary xl-btn" type="button" data-xl="maint" hidden>Xuất báo cáo Excel</button></div>
@@ -873,7 +881,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       </div>
     </section>
   
-    <section id="mt-extra" aria-label="Theo dõi thay nhớt và bảo hành" style="margin-top:20px">
+    <section id="mt-extra" data-histhide aria-label="Theo dõi thay nhớt và bảo hành" style="margin-top:20px">
       <div class="sec-head"><h2>Theo dõi thay nhớt</h2><p class="sec-sub">Cứ 6.000 km thay nhớt một lần. Số km cộng từ Sổ hành trình kể từ lần thay nhớt gần nhất.</p></div>
       <div class="scroll"><table style="min-width:720px"><thead><tr><th>Xe</th><th>Lần thay nhớt gần nhất</th><th>Đã chạy từ lần thay (km)</th><th>Còn lại đến hạn (km)</th><th style="text-align:left">Trạng thái</th></tr></thead><tbody id="mt-oil"></tbody></table></div>
       <p class="sec-sub" id="mt-oilnote" style="margin-top:8px"></p>
@@ -3644,9 +3652,19 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
 
   /* ---------- Chuyển sổ ---------- */
   var TAB_KEY='phucan-tab', curTab='home', TABS=['home','fuel','refuel','trips','maint','acct','sum'];
+  function updateHistBars(){
+    var need=!!(db&&db.needsHistory&&db.needsHistory());
+    document.documentElement.classList.toggle('hist-need',need);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-hist]'),function(el){el.hidden=!need;});
+  }
+  document.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-hist-btn]'); if(!b||!db||!db.loadHistory) return;
+    b.disabled=true;bigToast('saving','Đang tải lịch sử các lần nhập trước…');
+    db.loadHistory().then(function(){bigToast('ok','Đã tải lịch sử các lần nhập trước');updateHistBars();}).catch(function(){b.disabled=false;bigToast('err','Chưa tải được lịch sử','Hãy kiểm tra mạng rồi bấm lại.');});
+  });
   function setTab(name){
     if(TABS.indexOf(name)<0||(name==='fuel'&&!can('fuel'))||(name==='sum'&&!can('sum'))) name='home';
-    curTab=name;
+    curTab=name;updateHistBars();
     TABS.forEach(function(n){
       $('tab-'+n).hidden=(n!==name);
       $('t-'+n).setAttribute('aria-selected',n===name?'true':'false');
@@ -3899,7 +3917,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         catch(e){if(e&&e.code==='unauthorized'){setSess(null);return null;}throw e;}
       },
       login:async function(id){var j=await rawPost({op:'login',id:id});setSess({id:j.user.id,token:j.token});lsSet('phucan-user:'+j.user.id,j.user);return j.user;},
-      logout:async function(){var s1=getSess();try{await call({op:'logout'});}catch(e){}setSess(null);if(s1){lsDel('phucan-user:'+s1.id);lsDel('phucan-data:'+s1.id);}},
+      logout:async function(){var s1=getSess();try{await call({op:'logout'});}catch(e){}setSess(null);if(s1){lsDel('phucan-user:'+s1.id);lsDel('phucan-data:'+s1.id);lsDel('phucan-hist:'+s1.id);}},
       users:async function(){return (await call({op:'listUsers'})).users;},
       saveUser:async function(d){return (await call({op:'setUser',data:d})).users;},
       delUser:async function(id){return (await call({op:'delUser',id:id})).users;}
@@ -3921,9 +3939,21 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       if(cs!==last.cfg){last.cfg=cs;cl.forEach(function(f){f(cfgSnap());});}
     }
     function mark(){last.fuel=JSON.stringify(cache.fuel);last.cfg=JSON.stringify(cache.cfg);last.trips=JSON.stringify(cache.trips);last.maint=JSON.stringify(cache.maint);last.refuel=JSON.stringify(cache.refuel);}
-    async function pull(){
-      var j=await call({op:'read'});
-      cache.fuel=j.fuel||[];cache.cfg=j.config||null;cache.trips=j.trips||[];cache.maint=j.maint||[];cache.refuel=j.refuel||[];loaded=true;emit();
+    function curUser(){var s0=getSess();return s0?lsGet('phucan-user:'+s0.id):null;}
+    function isLite(){var u=curUser();return !!u&&(u.role==='taixe'||u.role==='totruong');}
+    function histOn(){var s0=getSess();return !!(s0&&lsGet('phucan-hist:'+s0.id));}
+    function monthSince(){var d=new Date(Date.now()+7*3600e3);return Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)-864e5;}
+    async function pull(full){
+      var lite=!full&&isLite(), since=lite?(histOn()?monthSince():Date.now()+400*864e5):0; // chưa bấm Xem lịch sử: không tải lần nhập nào
+      var j=await call(lite?{op:'read',since:since}:{op:'read'});
+      var tr=j.trips||[],mt=j.maint||[],rf=j.refuel||[];
+      if(lite&&histOn()){ // đã từng xem lịch sử: giữ các lần cũ đã tải, chỉ làm mới từ đầu tháng
+        tr=cache.trips.filter(function(t){return t.start<since;}).concat(tr);
+        mt=cache.maint.filter(function(m){return m.date<since;}).concat(mt);
+        rf=cache.refuel.filter(function(x){return x.date<since;}).concat(rf);
+      }
+      if(full){var s2=getSess();if(s2) lsSet('phucan-hist:'+s2.id,1);}
+      cache.fuel=j.fuel||[];cache.cfg=j.config||null;cache.trips=tr;cache.maint=mt;cache.refuel=rf;loaded=true;emit();
       var s1=getSess();if(s1) lsSet('phucan-data:'+s1.id,{fuel:cache.fuel,cfg:cache.cfg,trips:cache.trips,maint:cache.maint,refuel:cache.refuel,at:Date.now()});
     }
     // hiện ngay dữ liệu lần trước (nếu có) trong lúc tải dữ liệu mới
@@ -3963,6 +3993,8 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     return {
       media:media,
       auth:auth,
+      needsHistory:function(){return isLite()&&!histOn();},
+      loadHistory:function(){return pull(true);},
       kmOnly:true,
       routeKm:function(from,to){return call({op:'routeKm',from:from,to:to});},readMeter:function(mime,data){return call({op:'readMeter',mime:mime,data:data});},
       doc:function(path){
