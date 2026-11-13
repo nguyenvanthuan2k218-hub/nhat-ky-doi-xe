@@ -907,6 +907,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <label class="fld"><span class="lab">ID</span><input class="txt" id="us-id" type="text" autocapitalize="none" spellcheck="false" maxlength="30" placeholder="Ví dụ: hung-taixe, lan-ketoan"></label>
         <label class="fld"><span class="lab">Tên hiển thị</span><input class="txt" id="us-name" type="text" maxlength="60" placeholder="Ví dụ: Nguyễn Văn Hùng"></label>
         <label class="fld"><span class="lab">Vai trò</span><select class="txt" id="us-role"><option value="taixe">Tài xế</option></select></label>
+        <label class="fld" id="us-plate-w"><span class="lab">Xe mặc định (tự chọn sẵn khi tài khoản này nhập liệu)</span><select class="txt" id="us-plate"><option value="">— Không đặt —</option></select></label>
         <div class="tform-act"><button class="btn" type="button" id="us-cancel" hidden>Hủy sửa</button><button class="btn primary" type="submit" id="us-save">Thêm tài khoản</button></div>
       </form>
       <p class="m-err" id="us-err" role="alert" hidden></p>
@@ -2169,6 +2170,10 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     var c={};list.forEach(function(x){x=String(x||'').trim();if(x) c[x]=(c[x]||0)+1;});
     return Object.keys(c).sort(function(a,b){return c[b]-c[a]||a.localeCompare(b);}).slice(0,120);
   }
+  function defPlate(sel){
+    var p=me&&me.plate;
+    if(p&&vehicles.some(function(v){return v.id===p;})) sel.value=p;
+  }
   function renderTripForm(){
     var key=vehicles.map(function(v){return v.id;}).join(',');
     var sel=$('trip-plate'), fl=$('trip-filter');
@@ -2176,7 +2181,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       var cur=sel.value, cf=fl.value;
       sel.innerHTML=vehicles.map(function(v){return '<option value="'+v.id+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
       fl.innerHTML='<option value="">Tất cả xe</option>'+vehicles.map(function(v){return '<option value="'+v.id+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
-      if(vehicles.some(function(v){return v.id===cur;})) sel.value=cur;
+      if(vehicles.some(function(v){return v.id===cur;})) sel.value=cur; else defPlate(sel);
       if(vehicles.some(function(v){return v.id===cf;})) fl.value=cf;
       tripPlateKey=key;
       syncDriver();
@@ -2464,7 +2469,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       var cur=sel.value, cf=fl.value;
       var opts=vehicles.map(function(v){return '<option value="'+v.id+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
       sel.innerHTML=opts;fl.innerHTML='<option value="">Tất cả xe</option>'+opts;
-      if(vehicles.some(function(v){return v.id===cur;})) sel.value=cur;
+      if(vehicles.some(function(v){return v.id===cur;})) sel.value=cur; else defPlate(sel);
       if(vehicles.some(function(v){return v.id===cf;})) fl.value=cf;
       refuelPlateKey=key;
     }
@@ -3001,7 +3006,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       var cur=sel.value, cf=fl.value;
       var opts=vehicles.map(function(v){return '<option value="'+v.id+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
       sel.innerHTML=opts;fl.innerHTML='<option value="">Tất cả xe</option>'+opts;
-      if(vehicles.some(function(v){return v.id===cur;})) sel.value=cur;
+      if(vehicles.some(function(v){return v.id===cur;})) sel.value=cur; else defPlate(sel);
       if(vehicles.some(function(v){return v.id===cf;})) fl.value=cf;
       maintPlateKey=key;
     }
@@ -3777,7 +3782,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   function can(a){return !!me&&(PERM[a]||[]).indexOf(me.role)>=0;}
   function normId(x){return String(x==null?'':x).trim().toLowerCase();}
   function idOk(x){return /^[a-z0-9][a-z0-9-]{2,29}$/.test(x);}
-  function pubUser(id,u){return {id:id,name:u.name||id,role:ROLE_TXT[u.role]?u.role:'taixe'};}
+  function pubUser(id,u){return {id:id,name:u.name||id,role:ROLE_TXT[u.role]?u.role:'taixe',plate:u.plate||''};}
   function guardUsers(list,uid,change){
     // không để mất quản lý cuối cùng
     var ads=list.filter(function(u){return u.role==='admin';});
@@ -3816,7 +3821,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         if(!ROLE_TXT[d.role]||!me||!canManage(me.role,d.role)) throw {code:'forbidden'};
         var old=cache[id];
         if(old) guardUsers(list(),id,old.role==='admin'&&d.role!=='admin'?'demote':'edit');
-        var u={name:String(d.name||id).trim().slice(0,60)||id,role:d.role};
+        var u={name:String(d.name||id).trim().slice(0,60)||id,role:d.role,plate:(d.role==='taixe'||d.role==='totruong')?normPlate(d.plate):''};
         cache[id]=u;await store.put(id,u);return list();
       },
       delUser:async function(id){
@@ -3833,7 +3838,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   function dbUserStore(){
     var map={},first=null;
     var got=new Promise(function(res){first=res;});
-    db.collection('users').onSnapshot(function(snap){map={};snap.docs.forEach(function(d){var x=d.data();if(x&&x.role) map[d.id]={name:x.name,role:x.role};});first(map);},function(){first(map);});
+    db.collection('users').onSnapshot(function(snap){map={};snap.docs.forEach(function(d){var x=d.data();if(x&&x.role) map[d.id]={name:x.name,role:x.role,plate:x.plate||''};});first(map);},function(){first(map);});
     return {
       load:async function(){await Promise.race([got,new Promise(function(r){setTimeout(r,4000);})]);return JSON.parse(JSON.stringify(map));},
       put:async function(id,u){map[id]=u;await db.doc('users/'+id).set(u);},
@@ -3873,6 +3878,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   function enterApp(u){
     me=u;document.documentElement.classList.remove('locked');
     applyRole();renderAcct();
+    ['trip-plate','rf-plate','mt-plate'].forEach(function(i){var e=$(i);if(e) defPlate(e);});
     setTab('home');
   }
   var usEditing=null, usList=[];
@@ -3888,7 +3894,17 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     var order=['taixe','totruong','ketoan','nhansu','quanly','admin'];
     sel.innerHTML=order.filter(function(r){return canManage(me.role,r);}).map(function(r){return '<option value="'+r+'">'+ROLE_TXT[r]+'</option>';}).join('');
     if(cur&&canManage(me.role,cur)) sel.value=cur;
+    fillUsPlate();
   }
+  function fillUsPlate(){
+    var s=$('us-plate'); if(!s) return;
+    var cur=s.value;
+    s.innerHTML='<option value="">— Không đặt —</option>'+vehicles.map(function(v){return '<option value="'+v.id+'">'+esc(fmtPlate(v.id))+'</option>';}).join('');
+    s.value=cur;
+    var r=$('us-role').value;
+    $('us-plate-w').hidden=!(r==='taixe'||r==='totruong');
+  }
+  $('us-role').addEventListener('change',fillUsPlate);
   function visibleUser(u){return canManage(me.role,u.role);}
   async function loadUsers(){
     try{usList=await authApi.users();}catch(e){usList=[];}
@@ -3901,12 +3917,12 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   }
   var usConfirm=null, usConfirmT=null;
   function usReset(){
-    usEditing=null;$('us-id').value='';$('us-id').readOnly=false;$('us-name').value='';$('us-role').value='taixe';
+    usEditing=null;$('us-id').value='';$('us-id').readOnly=false;$('us-name').value='';$('us-role').value='taixe';$('us-plate').value='';fillUsPlate();
     $('us-save').textContent='Thêm tài khoản';$('us-cancel').hidden=true;
   }
   $('us-form').addEventListener('submit',async function(e){
     e.preventDefault();if(!can('acct')) return;showErrEl('us-err','');
-    var d={id:$('us-id').value,name:$('us-name').value,role:$('us-role').value};
+    var d={id:$('us-id').value,name:$('us-name').value,role:$('us-role').value,plate:$('us-plate').value};
     if(!normId(d.id)){showErrEl('us-err','Nhập ID.');return;}
     if(!usEditing&&usList.some(function(u){return u.id===normId(d.id);})){showErrEl('us-err',AUTH_ERR.exists);return;}
     try{usList=await authApi.saveUser(d);usReset();renderUsers();}
@@ -3918,7 +3934,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     var ed=b.getAttribute('data-uedit'), dl2=b.getAttribute('data-udel');
     if(ed){
       var u=usList.filter(function(x){return x.id===ed;})[0]; if(!u) return;
-      usEditing=ed;$('us-id').value=u.id;$('us-id').readOnly=true;$('us-name').value=u.name;$('us-role').value=u.role;
+      usEditing=ed;$('us-id').value=u.id;$('us-id').readOnly=true;$('us-name').value=u.name;$('us-role').value=u.role;fillUsPlate();$('us-plate').value=u.plate||'';
       $('us-save').textContent='Lưu thay đổi';$('us-cancel').hidden=false;
       $('us-name').focus();return;
     }
