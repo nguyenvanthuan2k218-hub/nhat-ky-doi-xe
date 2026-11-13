@@ -810,7 +810,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           <div id="rf-ocr-row" style="margin-top:8px;display:none;flex-wrap:wrap;gap:8px;align-items:center"><button class="btn small" type="button" id="rf-ocr">Đọc lại số từ ảnh đầu tiên</button><span class="sec-sub" id="rf-ocr-note" role="status"></span></div>
           <span class="sec-sub" style="margin-top:6px">Ví dụ: ảnh đồng hồ xăng, ảnh hóa đơn, video lúc đổ. Tối đa 6 tệp, mỗi tệp không quá 50 MB.</span>
         </div>
-        <div class="tform-act"><span class="sec-sub" id="rf-prog" role="status" style="margin-right:auto"></span><button class="btn primary" type="submit" id="rf-submit">Ghi vào sổ</button></div>
+        <div class="tform-act"><span class="sec-sub" id="rf-prog" role="status" style="margin-right:auto"></span><span id="rf-stall" hidden style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="rf-retry">Thử lại ngay</button><button type="button" class="btn" id="rf-cancel">Hủy tải ảnh</button></span><button class="btn primary" type="submit" id="rf-submit">Ghi vào sổ</button></div>
       </form>
       <p class="m-err" id="rf-err" role="alert" hidden></p>
     </section>
@@ -2719,40 +2719,82 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     if(mode==='db') await db.doc('refuel/'+x.id).set({plate:x.plate,liters:x.liters,cost:x.cost,by:x.by||'',media:x.media,date:x.date,at:x.at});
     else persistLocal();
   }
+  var jobFails=new Map(), jobCancel=new Set(), jobTimers=new Map();
+  function jobErrTxt(e){
+    if(!e) return 'không rõ';
+    var t=e.code||e.message||String(e); if(e.detail) t+=': '+e.detail; if(e.status) t+=' ('+e.status+')';
+    if(t==='unauthorized') t='phiên đăng nhập hết hạn, hãy đăng xuất rồi đăng nhập lại';
+    return String(t).slice(0,160);
+  }
+  function updStall(){
+    var n=0,saved=true;jobFails.forEach(function(v,k){if(v>=2&&bgJobsAll(k)){n++;}});
+    $('rf-stall').style.display=n?'flex':'none';$('rf-stall').hidden=!n;
+  }
+  function bgJobsAll(k){return true;}
   async function runJob(job){
-    if(bgJobs.has(job.id)) return;
+    if(bgJobs.has(job.id)||jobCancel.has(job.id)) return;
+    clearTimeout(jobTimers.get(job.id));
     bgJobs.set(job.id,1);showBg();
+    var lastErr=null;
     try{
       var api=await getMediaApi(), rec=job.rec;
       await putRefuel(Object.assign({},rec,{media:job.done.slice()}));
+      if(!job.saved){job.saved=true;await jobPut(job);}
       if(refuelPending.get(rec.id)===rec||refuelPending.get(rec.id)===refuel[rec.id]) refuelPending.delete(rec.id);
-      for(var i=job.done.length;i<job.files.length;){ // tải song song tối đa 3 tệp một lượt
+      for(var i=job.done.length;i<job.files.length;){ // tải song song tối đa 3 tệp một lượt khi máy chủ hỗ trợ
+        if(jobCancel.has(job.id)) throw {cancelled:1};
         var grp=job.files.slice(i,i+((api.fast&&api.fast())?3:1)), rr=await Promise.allSettled(grp.map(function(f){return api.put(f.blob,f.name);}));
         var okAll=true;
         rr.forEach(function(r,gi){
           if(r.status==='fulfilled'&&okAll){var f2=grp[gi];job.done.push({id:String(r.value),type:f2.type,name:f2.name,size:f2.blob.size});}
           else if(r.status==='fulfilled'){try{api.del({id:String(r.value)});}catch(_){}}
-          else okAll=false;
+          else{okAll=false;if(!lastErr) lastErr=r.reason;}
         });
         await jobPut(job);
-        if(!okAll) throw new Error('upload');
+        if(!okAll) throw lastErr||new Error('upload');
         i=job.done.length;
       }
+      if(jobCancel.has(job.id)) throw {cancelled:1};
       var fin=Object.assign({},rec,{media:job.done.slice()});
       refuel[rec.id]=fin;refuelPending.set(rec.id,fin);
       await putRefuel(fin);
       if(refuelPending.get(rec.id)===fin) refuelPending.delete(rec.id);
       await jobDel(job.id);
+      jobFails.delete(job.id);updStall();
       bgJobs.delete(job.id);showBg();renderHomeIf();
       bigToast('ok','Đã ghi sổ đổ dầu thành công','Xe '+fmtPlate(rec.plate)+' · '+nfK.format(rec.liters)+' lít');
     }catch(e){
       bgJobs.delete(job.id);
+      if(e&&e.cancelled){showBg();return;}
       if(e&&e.message==='no-assets'){await jobDel(job.id);rfErr('Chưa bật chỗ lưu hình ảnh, video ở bản này.');bigToast('err','Chưa ghi được vào sổ','Chưa bật chỗ lưu hình ảnh, video ở bản này.');showBg();return;}
-      rfProg('Chưa tải được ảnh (mạng yếu?). Ứng dụng sẽ tự thử lại, vui lòng chưa đóng trang.');bigToast('saving','Đang ghi vào sổ đổ dầu…','Mạng yếu, đang tự thử lại. Vui lòng chưa đóng trang.');
+      var n=(jobFails.get(job.id)||0)+1;jobFails.set(job.id,n);updStall();
+      var why=jobErrTxt(e);
+      if(n>=6){ // quá nhiều lần: dừng tự thử, chờ người dùng bấm
+        rfProg('Chưa tải được ảnh sau nhiều lần thử. Lỗi: '+why+'. Bấm Thử lại ngay hoặc Hủy tải ảnh.');
+        bigToast('err','Chưa tải được ảnh lên','Lỗi: '+why+'. Vào Sổ đổ dầu, bấm Thử lại ngay hoặc Hủy tải ảnh.');
+        renderRefuel();return;
+      }
+      rfProg('Chưa tải được ảnh. Lỗi: '+why+'. Đang thử lại lần '+n+'…');
+      bigToast('saving','Đang ghi vào sổ đổ dầu…','Lỗi: '+why+'. Đang thử lại lần '+n+'.');
       renderRefuel();
-      setTimeout(function(){runJob(job);},15000);
+      jobTimers.set(job.id,setTimeout(function(){runJob(job);},Math.min(60000,10000*n)));
     }
   }
+  $('rf-retry').addEventListener('click',function(){
+    jobAll().then(function(all){all.filter(function(j){return me&&j.uid===me.id&&!bgJobs.has(j.id);}).forEach(function(j){jobFails.delete(j.id);runJob(j);});updStall();});
+  });
+  $('rf-cancel').addEventListener('click',function(){
+    jobAll().then(async function(all){
+      for(var k=0;k<all.length;k++){
+        var j=all[k]; if(!me||j.uid!==me.id) continue;
+        jobCancel.add(j.id);clearTimeout(jobTimers.get(j.id));jobFails.delete(j.id);
+        await jobDel(j.id);bgJobs.delete(j.id);
+        if(!j.saved){delete refuel[j.id];refuelPending.delete(j.id);} // phiếu chưa ghi được lên sổ thì bỏ luôn, nhớ nhập lại
+      }
+      updStall();showBg();renderRefuel();renderHomeIf();
+      bigToast('ok','Đã hủy tải ảnh','Phiếu nào chưa lên sổ thì cần nhập lại.');
+    });
+  });
   async function resumeJobs(){
     if(!me) return;
     var all=await jobAll();
@@ -3898,8 +3940,14 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     function getSess(){try{return JSON.parse(localStorage.getItem(SKEY)||'null');}catch(e){return null;}}
     function setSess(x){try{if(x) localStorage.setItem(SKEY,JSON.stringify(x)); else localStorage.removeItem(SKEY);}catch(e){}}
     async function rawPost(body){
-      var r=await fetch(API,{method:'POST',body:JSON.stringify(body)});
-      var j=await r.json();if(j.error) throw {code:j.error,detail:j.detail,status:j.status};return j;
+      var ac=(typeof AbortController!=='undefined')?new AbortController():null, to=ac?setTimeout(function(){ac.abort();},body.op==='putMedia'?120000:60000):0, r, j;
+      try{
+        r=await fetch(API,{method:'POST',body:JSON.stringify(body),signal:ac?ac.signal:undefined});
+        j=await r.json();
+      }catch(e){
+        throw {code:(e&&e.name==='AbortError')?'timeout':'network',detail:String(e&&e.message||e).slice(0,80)};
+      }finally{if(to) clearTimeout(to);}
+      if(j.error) throw {code:j.error,detail:j.detail,status:j.status};return j;
     }
     async function call(body){
       try{
