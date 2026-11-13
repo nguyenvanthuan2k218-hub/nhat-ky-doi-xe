@@ -2569,10 +2569,10 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   async function prepFile(file){
     if(file.type.indexOf('image/')===0){
       try{
-        var im=await loadImg(file), w=im.naturalWidth, h=im.naturalHeight, k=Math.min(1,1600/Math.max(w,h));
+        var im=await loadImg(file), w=im.naturalWidth, h=im.naturalHeight, k=Math.min(1,1280/Math.max(w,h));
         var cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));
         cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
-        var blob=await new Promise(function(r2){cv.toBlob(r2,'image/jpeg',0.82);});
+        var blob=await new Promise(function(r2){cv.toBlob(r2,'image/jpeg',0.78);});
         if(blob&&blob.size>0) return {blob:blob,type:'image',name:(file.name||'anh').replace(/\.[^.]+$/,'')+'.jpg'};
       }catch(e){}
       return {blob:file,type:'image',name:file.name||'anh.jpg'};
@@ -2726,10 +2726,17 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       var api=await getMediaApi(), rec=job.rec;
       await putRefuel(Object.assign({},rec,{media:job.done.slice()}));
       if(refuelPending.get(rec.id)===rec||refuelPending.get(rec.id)===refuel[rec.id]) refuelPending.delete(rec.id);
-      for(var i=job.done.length;i<job.files.length;i++){
-        var f=job.files[i], id=await api.put(f.blob,f.name);
-        job.done.push({id:String(id),type:f.type,name:f.name,size:f.blob.size});
+      for(var i=job.done.length;i<job.files.length;){ // tải song song tối đa 3 tệp một lượt
+        var grp=job.files.slice(i,i+3), rr=await Promise.allSettled(grp.map(function(f){return api.put(f.blob,f.name);}));
+        var okAll=true;
+        rr.forEach(function(r,gi){
+          if(r.status==='fulfilled'&&okAll){var f2=grp[gi];job.done.push({id:String(r.value),type:f2.type,name:f2.name,size:f2.blob.size});}
+          else if(r.status==='fulfilled'){try{api.del({id:String(r.value)});}catch(_){}}
+          else okAll=false;
+        });
         await jobPut(job);
+        if(!okAll) throw new Error('upload');
+        i=job.done.length;
       }
       var fin=Object.assign({},rec,{media:job.done.slice()});
       refuel[rec.id]=fin;refuelPending.set(rec.id,fin);
@@ -3031,12 +3038,12 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     if(mtFiles.length){
       try{
         api=await getMediaApi();
-        for(var i=0;i<mtFiles.length;i++){
-          $('mt-prog').textContent='Đang tải lên '+(i+1)+'/'+mtFiles.length+'…';
-          var pf=await prepFile(mtFiles[i].file);
-          var id=await api.put(pf.blob,pf.name);
-          done.push({id:String(id),type:pf.type,name:pf.name,size:pf.blob.size});
-        }
+        $('mt-prog').textContent='Đang tải lên '+mtFiles.length+' tệp…';
+        var pfs=await Promise.all(mtFiles.map(function(m){return prepFile(m.file);}));
+        var ups=await Promise.allSettled(pfs.map(function(pf){return api.put(pf.blob,pf.name);}));
+        ups.forEach(function(r,ix){if(r.status==='fulfilled') done.push({id:String(r.value),type:pfs[ix].type,name:pfs[ix].name,size:pfs[ix].blob.size});});
+        var badU=ups.filter(function(r){return r.status==='rejected';})[0];
+        if(badU) throw badU.reason;
       }catch(e){
         done.forEach(function(m){try{api.del(m);}catch(_){}});
         mtBusy=false;$('mt-submit').disabled=false;$('mt-prog').textContent='';
@@ -3965,12 +3972,19 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     var media={
       put:async function(blob,name){
         var ids=[],n=Math.max(1,Math.ceil(blob.size/PART));
+        async function one(k){
+          var data=await b64(blob.slice(k*PART,(k+1)*PART));
+          var j=await post({op:'putMedia',name:n>1?name+'.part'+(k+1):name,mime:n>1?'application/octet-stream':(blob.type||'application/octet-stream'),data:data});
+          if(!j||!j.id) throw new Error('upload');
+          return j.id;
+        }
         try{
-          for(var k=0;k<n;k++){
-            var data=await b64(blob.slice(k*PART,(k+1)*PART));
-            var j=await post({op:'putMedia',name:n>1?name+'.part'+(k+1):name,mime:n>1?'application/octet-stream':(blob.type||'application/octet-stream'),data:data});
-            if(!j||!j.id) throw new Error('upload');
-            ids.push(j.id);
+          for(var k0=0;k0<n;k0+=3){ // tải song song tối đa 3 phần một lượt
+            var grp=[];for(var k=k0;k<Math.min(n,k0+3);k++) grp.push(one(k));
+            var rs=await Promise.allSettled(grp);
+            rs.forEach(function(r){if(r.status==='fulfilled') ids.push(r.value);});
+            var bad=rs.filter(function(r){return r.status==='rejected';})[0];
+            if(bad) throw bad.reason;
           }
         }catch(e){ids.forEach(function(id){post({op:'delMedia',id:id}).catch(function(){});});throw e;}
         return ids.join(',');
