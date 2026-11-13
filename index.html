@@ -2569,10 +2569,10 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   async function prepFile(file){
     if(file.type.indexOf('image/')===0){
       try{
-        var im=await loadImg(file), w=im.naturalWidth, h=im.naturalHeight, k=Math.min(1,1280/Math.max(w,h));
+        var im=await loadImg(file), w=im.naturalWidth, h=im.naturalHeight, k=Math.min(1,960/Math.max(w,h));
         var cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(w*k));cv.height=Math.max(1,Math.round(h*k));
         cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
-        var blob=await new Promise(function(r2){cv.toBlob(r2,'image/jpeg',0.78);});
+        var blob=await new Promise(function(r2){cv.toBlob(r2,'image/jpeg',0.72);});
         if(blob&&blob.size>0) return {blob:blob,type:'image',name:(file.name||'anh').replace(/\.[^.]+$/,'')+'.jpg'};
       }catch(e){}
       return {blob:file,type:'image',name:file.name||'anh.jpg'};
