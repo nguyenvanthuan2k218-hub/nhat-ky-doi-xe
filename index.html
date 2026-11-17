@@ -3539,7 +3539,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           cols.forEach(function(c,ci){
             var cell=tr.getCell(ci+1);
             if(ci===0) cell.value=o.totalLabel||'Cả đội';
-            else if(c.sum) cell.value={formula:'SUM('+colLetter(ci)+(H+1)+':'+colLetter(ci)+last+')',result:sumOf(rows,ci)};
+            else if(c.sum&&rows.some(function(r){return typeof r[ci]==='number';})) cell.value={formula:'SUM('+colLetter(ci)+(H+1)+':'+colLetter(ci)+last+')',result:sumOf(rows,ci)};
             else if(o.totalVals&&o.totalVals[ci]!==undefined&&o.totalVals[ci]!==null) cell.value=o.totalVals[ci];
             if(c.fmt) cell.numFmt=c.fmt;
             cell.font={name:'Calibri',size:11,bold:true,color:{argb:XINK}};cell.fill=xFill(XSOFT);
@@ -3620,15 +3620,20 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       {h:'Lít đã đổ (sổ đổ dầu)',w:14,fmt:L1,sum:true},{h:'Tiền đổ dầu',w:16,fmt:MONEY,sum:true},
       {h:'Số lần sửa chữa, bảo dưỡng',w:15,fmt:'#,##0',sum:true},{h:'Chi phí sửa chữa, bảo dưỡng',w:18,fmt:MONEY,sum:true}
     ];
+    var tkBy={};tripsL.forEach(function(t){if(t.km!=null) tkBy[t.plate]=(tkBy[t.plate]||0)+t.km;});
+    var usedTripKm=false;
     var rows1=A.rows.map(function(r){
       var rf=rfBy[r.id],mt=mtBy[r.id];
+      var kmV=hasFuel&&r.anyKm?r.km:(tkBy[r.id]!=null?tkBy[r.id]:null);
+      if(!(hasFuel&&r.anyKm)&&kmV!=null) usedTripKm=true;
       return [fmtPlate(r.id),r.driver||'',r.trips,r.nd,
-        hasFuel&&r.anyKm?r.km:null,hasFuel&&r.anyQ?r.Q:null,hasFuel&&r.anyA?r.A:null,
+        kmV,hasFuel&&r.anyQ?r.Q:null,hasFuel&&r.anyA?r.A:null,
         hasFuel&&r.cq>0?r.ca-r.cq:null,hasFuel&&r.pct!=null?r.pct/100:null,hasFuel?r.avg:null,
         rf?rf.l:null,rf&&rf.ac?rf.c:null,mt?mt.n:0,mt&&mt.ac?mt.c:null];
     });
     var tv1=[];tv1[3]=T.nd;tv1[8]=hasFuel&&T.pct!=null?T.pct/100:null;tv1[9]=hasFuel?T.avg:null;
     var notes1=['Chênh lệch và mức trung bình chỉ tính các tháng của xe có đủ số km, định mức và lít thực tế. Ngưỡng cảnh báo vượt định mức: '+nf2.format(threshold)+'%.'];
+    if(usedTripKm) notes1.push('Xe nào chưa nhập số km trong sổ Định mức dầu thì cột Số km lấy bằng tổng quãng đường các chuyến trong Sổ hành trình.');
     if(!hasFuel) notes1.push('Số km, lít định mức và lít thực tế được nhập theo tháng nên báo cáo tuần/ngày tùy chọn để trống các cột đó. Chọn Tháng hoặc Năm để xem đầy đủ.');
     if(want('sum')) sheet('Tổng hợp','Tổng hợp theo xe',cols1,rows1,{pre:preBlock('Chi tiết theo từng xe'),totals:true,totalVals:tv1,style:pctStyle(8),totalStyle:function(tr){var c=tr.getCell(9);if(T.pct!=null&&hasFuel){var st=statusOf(T.pct);c.font={name:'Calibri',size:11,bold:true,color:{argb:st==='over'?'FFB3261E':st==='slight'?'FF8A5A00':'FF138A42'}};}},notes:notes1});
     // 2. Định mức dầu
