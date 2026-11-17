@@ -920,6 +920,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <button type="button" data-sum="week" aria-pressed="false">Tuần</button>
         <button type="button" data-sum="month" aria-pressed="true">Tháng</button>
         <button type="button" data-sum="year" aria-pressed="false">Năm</button>
+        <button type="button" data-sum="range" aria-pressed="false">Tùy chọn ngày</button>
       </div>
       <button class="btn primary xl-btn" type="button" data-xl="sum" hidden>Xuất báo cáo Excel</button>
       <div class="sumnav" role="group" aria-label="Chọn kỳ">
@@ -929,7 +930,12 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         <button class="btn" id="sum-today" type="button" hidden>Về kỳ này</button>
       </div>
     </div>
+    <div class="listbar" id="sum-rangebar" hidden style="margin:4px 0 10px">
+      <label class="fld" style="margin:0"><span class="lab">Từ ngày</span><input class="txt" id="sum-rf" type="date"></label>
+      <label class="fld" style="margin:0"><span class="lab">Đến ngày</span><input class="txt" id="sum-rt" type="date"></label>
+    </div>
     <p class="sec-sub" id="sum-range" style="margin-top:-12px"></p>
+    <section class="strip" id="sum-ov" aria-label="Tổng hợp kỳ báo cáo"></section>
     <section class="strip" id="sum-strip" aria-label="Tổng hợp theo kỳ"></section>
     <section aria-label="Bảng tổng hợp theo xe">
       <div class="scroll">
@@ -3163,8 +3169,15 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     var y=new Date(t).getUTCFullYear(), j1=Date.UTC(y,0,1);
     return {w:Math.floor((t-j1)/864e5/7)+1,y:y};
   }
+  var rangeSel={f:null,t:null};
   function periodOf(type,anchor){
     var d=new Date(anchor), y=d.getUTCFullYear(), m=d.getUTCMonth(), i;
+    if(type==='range'){
+      var rf=rangeSel.f, rt=rangeSel.t;
+      var rms=[],cm=Date.UTC(new Date(rf).getUTCFullYear(),new Date(rf).getUTCMonth(),1);
+      while(cm<=rt){var cd=new Date(cm);rms.push(cd.getUTCFullYear()+'-'+p2(cd.getUTCMonth()+1));cm=Date.UTC(cd.getUTCFullYear(),cd.getUTCMonth()+1,1);}
+      return {type:'range',from:rf,to:rt+864e5,months:rms,label:'Từ '+dmyFull(rf)+' đến '+dmyFull(rt),range:Math.round((rt-rf)/864e5)+1+' ngày, từ '+dmyFull(rf)+' đến '+dmyFull(rt),anchor:rf};
+    }
     if(type==='week'){
       var dn=(d.getUTCDay()+6)%7, from=Date.UTC(y,m,d.getUTCDate()-dn), iw=isoWeekOf(from);
       return {type:type,from:from,to:from+7*864e5,months:[],label:'Tuần '+iw.w+'/'+iw.y,range:dmyFull(from)+' đến '+dmyFull(from+6*864e5),anchor:from};
@@ -3175,6 +3188,32 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     }
     var key=y+'-'+p2(m+1);
     return {type:'month',from:Date.UTC(y,m,1),to:Date.UTC(y,m+1,1),months:[key],label:mLabel(key),range:dmyFull(Date.UTC(y,m,1))+' đến '+dmyFull(Date.UTC(y,m+1,0)),anchor:Date.UTC(y,m,1)};
+  }
+  function prevPeriod(P){
+    if(P.type==='range'){
+      var n=Math.round((P.to-P.from)/864e5), f=P.from-n*864e5;
+      return {type:'range',from:f,to:P.from,months:[],label:'Từ '+dmyFull(f)+' đến '+dmyFull(P.from-864e5),range:n+' ngày, từ '+dmyFull(f)+' đến '+dmyFull(P.from-864e5),anchor:f};
+    }
+    return periodOf(P.type,shiftAnchor(P.type,P.anchor,-1));
+  }
+  function periodStats(P){
+    var o={liters:0,anyL:false,cost:0,anyC:false,km:0,anyKm:false,repairs:0,rcost:0,anyRC:false};
+    Object.keys(refuel).forEach(function(k){var x=refuel[k];if(x.date<P.from||x.date>=P.to) return;
+      if(x.liters!=null){o.liters+=x.liters;o.anyL=true;} if(x.cost!=null){o.cost+=x.cost;o.anyC=true;}});
+    Object.keys(trips).forEach(function(k){var t=trips[k];if(t.start<P.from||t.start>=P.to) return;if(t.km!=null){o.km+=t.km;o.anyKm=true;}});
+    Object.keys(maint).forEach(function(k){var m=maint[k];if(m.date<P.from||m.date>=P.to) return;o.repairs++;if(m.cost!=null){o.rcost+=m.cost;o.anyRC=true;}});
+    return o;
+  }
+  function summaryItems(P){
+    var PP=prevPeriod(P), c=periodStats(P), p=periodStats(PP), M='#,##0" đ"';
+    function it(label,cv,pv,any,fmt,bad){return {label:label,cur:any?cv:null,prev:any?pv:null,fmt:fmt,bad:bad,pct:any?chg(cv,pv):null};}
+    return {P:P,PP:PP,items:[
+      it('Tổng lít dầu tiêu thụ',c.liters,p.liters,c.anyL,'#,##0.0" lít"',true),
+      it('Thành tiền đổ dầu',c.cost,p.cost,c.anyC,M,true),
+      it('Tổng km chạy',c.km,p.km,c.anyKm,'#,##0.0" km"',false),
+      it('Số lần sửa chữa',c.repairs,p.repairs,true,'#,##0" lần"',true),
+      it('Thành tiền sửa chữa',c.rcost,p.rcost,c.anyRC||c.repairs>0,M,true)
+    ]};
   }
   function shiftAnchor(type,anchor,dir){
     var d=new Date(anchor);
@@ -3231,14 +3270,31 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   function renderSum(){
     if(curTab==='home') renderHome();
     if(sumAnchor==null) sumAnchor=dayStart(nowNaive());
-    var P=periodOf(sumType,sumAnchor), PP=periodOf(sumType,shiftAnchor(sumType,sumAnchor,-1));
-    var cur=aggAll(P), prev=aggAll(PP), T=cur.T, Tp=prev.T, hasFuel=sumType!=='week';
-    var cp=periodOf(sumType,dayStart(nowNaive()));
+    if(sumType==='range'&&rangeSel.f==null){var t0=dayStart(nowNaive());rangeSel.t=t0;rangeSel.f=t0-14*864e5;}
+    var P=periodOf(sumType,sumAnchor), PP=prevPeriod(P);
+    var cur=aggAll(P), prev=aggAll(PP), T=cur.T, Tp=prev.T, hasFuel=sumType==='month'||sumType==='year';
+    var isR=sumType==='range';
+    var cp=isR?P:periodOf(sumType,dayStart(nowNaive()));
+    $('sum-rangebar').hidden=!isR;
+    document.querySelector('.sumnav').style.display=isR?'none':'';
+    if(isR){var toIn=function(ms){var d=new Date(ms);return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());};
+      if($('sum-rf').value!==toIn(rangeSel.f)) $('sum-rf').value=toIn(rangeSel.f);
+      if($('sum-rt').value!==toIn(rangeSel.t)) $('sum-rt').value=toIn(rangeSel.t);}
+    var SI=summaryItems(P);
+    $('sum-ov').innerHTML=SI.items.map(function(x){
+      var val=x.cur==null?'—':nf1.format(x.cur).replace(/,0$/,'');
+      if(x.fmt.indexOf('đ')>=0) val=x.cur==null?'—':nf0.format(x.cur)+' đ';
+      else if(x.fmt.indexOf('lần')>=0) val=x.cur+' lần';
+      else if(x.cur!=null) val=nf1.format(x.cur)+(x.fmt.indexOf('km')>=0?' km':' lít');
+      var d=x.pct==null?'chưa có số liệu kỳ trước':(Math.abs(x.pct)<0.05?'= 0,0% so với kỳ trước':(x.pct>0?'▲ ':'▼ ')+nf1.format(Math.abs(x.pct))+'% so với kỳ trước');
+      return stat0(x.label,val,d);
+    }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('[data-sum]'),function(b){b.setAttribute('aria-pressed',b.getAttribute('data-sum')===sumType?'true':'false');});
     $('sum-label').textContent=P.label;
-    $('sum-range').textContent=P.range;
-    $('sum-today').hidden=(P.from===cp.from);
+    $('sum-range').textContent=P.range+' · so với '+PP.range;
+    $('sum-today').hidden=isR||(P.from===cp.from);
     function stat(k,v,u,cls){return '<div class="stat"><span class="k">'+k+'</span><span class="v '+(cls||'')+'">'+v+'</span><span class="u">'+u+'</span></div>';}
+    function stat0(k,v,u){return stat(k,v,u);}
     $('sum-strip').innerHTML=
       stat('Số chuyến đi',String(T.trips),T.nd+' ngày có chuyến, '+deltaTxt(T.trips,Tp.trips,true))+
       stat('Quãng đường',hasFuel&&T.anyKm?nfK.format(T.km)+' km':'—',hasFuel?(T.anyKm?deltaTxt(T.km,Tp.km):'chưa nhập số km'):'xem theo tháng hoặc năm')+
@@ -3251,7 +3307,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         var last=r.last?dmyFull(r.last.start)+' '+fmtClock(r.last.start)+', '+r.last.from+' đến '+r.last.to:'—';
         return '<tr><td><span class="plate-sm">'+esc(fmtPlate(r.id))+'</span></td><td>'+esc(r.driver||'—')+'</td><td class="num">'+r.trips+'</td><td class="num">'+r.nd+'</td><td class="wrap">'+esc(last)+'</td></tr>';
       }).join('')+'<tr class="tot"><td>Cả đội</td><td></td><td class="num">'+T.trips+'</td><td class="num">'+T.nd+'</td><td></td></tr>';
-      $('sum-note').textContent='Số km và lít dầu được nhập theo tháng nên bảng tuần chỉ có số chuyến đi. Chọn Tháng hoặc Năm để xem thêm km và lít.';
+      $('sum-note').textContent='Bảng theo xe chỉ có số chuyến đi vì số km và lít định mức được nhập theo tháng; các số tổng hợp phía trên tính theo đúng ngày. Chọn Tháng hoặc Năm để xem thêm.';
     }else{
       head='<tr><th>Xe</th><th>Số chuyến</th><th>Số km</th><th>Lít theo định mức</th><th>Lít thực tế</th><th>Chênh lệch (lít)</th><th>Chênh lệch (%)</th><th>TB thực tế (L/100km)</th></tr>';
       function row(label,r,cls){
@@ -3277,6 +3333,14 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   Array.prototype.forEach.call(document.querySelectorAll('[data-sum]'),function(b){b.addEventListener('click',function(){setSumType(b.getAttribute('data-sum'));});});
   $('sum-prev').addEventListener('click',function(){sumAnchor=shiftAnchor(sumType,sumAnchor==null?dayStart(nowNaive()):sumAnchor,-1);renderSum();});
   $('sum-next').addEventListener('click',function(){sumAnchor=shiftAnchor(sumType,sumAnchor==null?dayStart(nowNaive()):sumAnchor,1);renderSum();});
+  function onRange(){
+    var a=$('sum-rf').value,b=$('sum-rt').value; if(!a||!b) return;
+    var pa=a.split('-').map(Number),pb=b.split('-').map(Number);
+    var f=Date.UTC(pa[0],pa[1]-1,pa[2]),t=Date.UTC(pb[0],pb[1]-1,pb[2]);
+    if(t<f){t=f;}
+    rangeSel.f=f;rangeSel.t=t;renderSum();
+  }
+  $('sum-rf').addEventListener('change',onRange);$('sum-rt').addEventListener('change',onRange);
   $('sum-today').addEventListener('click',function(){sumAnchor=dayStart(nowNaive());renderSum();});
 
 
@@ -3425,7 +3489,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
   function sumOf(rows,ci){var t=0;rows.forEach(function(r){if(typeof r[ci]==='number') t+=r[ci];});return t;}
   function makeXlsx(P,A,only,ids,subPre){
     function want(k){return !only||only.indexOf(k)>=0;}
-    var T=A.T, hasFuel=P.type!=='week', wb=new ExcelJS.Workbook();
+    var T=A.T, hasFuel=P.type==='month'||P.type==='year', wb=new ExcelJS.Workbook();
     wb.creator='Nhật ký đội xe Phúc An';wb.created=new Date();
     var tz=new Date().getTimezoneOffset()*60000;
     function atDate(ms){return new Date(ms-tz);}
@@ -3436,14 +3500,16 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     function sheet(name,title,cols,rows,o){
       o=o||{};
       var n=cols.length;
-      var ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:5,showGridLines:false}],properties:{tabColor:{argb:XG}},pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.4,right:0.4,top:0.5,bottom:0.5,header:0.3,footer:0.3}}});
+      var pre=o.pre?o.pre.rows:0, H=5+pre;
+      var ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:pre?3:5,zoomScale:125,showGridLines:false}],properties:{tabColor:{argb:XG}},pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.4,right:0.4,top:0.5,bottom:0.5,header:0.3,footer:0.3}}});
       cols.forEach(function(c,i){ws.getColumn(i+1).width=c.w;});
       function banner(rn,text,font,h){ws.mergeCells(rn,1,rn,n);var c=ws.getCell(rn,1);c.value=text;c.font=font;c.alignment={vertical:'middle',horizontal:'left'};ws.getRow(rn).height=h;}
       banner(1,'BỆNH VIỆN ĐA KHOA PHÚC AN · NHẬT KÝ ĐỘI XE',{name:'Calibri',size:10,bold:true,color:{argb:XG}},18);
       banner(2,title,{name:'Calibri',size:16,bold:true,color:{argb:XINK}},28);
       banner(3,sub,{name:'Calibri',size:10,color:{argb:XMUTED}},18);
       ws.getRow(4).height=6;
-      var hr=ws.getRow(5);hr.height=36;
+      if(pre) o.pre.draw(ws,5,n);
+      var hr=ws.getRow(H);hr.height=36;
       cols.forEach(function(c,i){
         var cell=hr.getCell(i+1);cell.value=c.h;
         cell.font={name:'Calibri',size:11,bold:true,color:{argb:'FFFFFFFF'}};cell.fill=xFill(XG);
@@ -3451,7 +3517,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         cell.border={left:{style:'thin',color:{argb:'FF2F9F5C'}},right:{style:'thin',color:{argb:'FF2F9F5C'}}};
       });
       rows.forEach(function(vals,ri){
-        var row=ws.getRow(6+ri);row.height=o.rowH||21;
+        var row=ws.getRow(H+1+ri);row.height=o.rowH||21;
         cols.forEach(function(c,ci){
           var cell=row.getCell(ci+1),v=vals[ci];
           cell.value=(v==null?null:v);
@@ -3463,17 +3529,17 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         });
         if(o.style) o.style(row,vals);
       });
-      var last=5+rows.length;
+      var last=H+rows.length;
       if(!rows.length){
-        ws.mergeCells(6,1,6,n);var ec=ws.getCell(6,1);ec.value='Chưa có dữ liệu trong kỳ này.';
-        ec.font={name:'Calibri',size:11,italic:true,color:{argb:XMUTED}};ec.alignment={horizontal:'center',vertical:'middle'};ws.getRow(6).height=28;last=6;
+        ws.mergeCells(H+1,1,H+1,n);var ec=ws.getCell(H+1,1);ec.value='Chưa có dữ liệu trong kỳ này.';
+        ec.font={name:'Calibri',size:11,italic:true,color:{argb:XMUTED}};ec.alignment={horizontal:'center',vertical:'middle'};ws.getRow(H+1).height=28;last=H+1;
       }else{
         if(o.totals){
           var tr=ws.getRow(last+1);tr.height=26;
           cols.forEach(function(c,ci){
             var cell=tr.getCell(ci+1);
             if(ci===0) cell.value=o.totalLabel||'Cả đội';
-            else if(c.sum) cell.value={formula:'SUM('+colLetter(ci)+'6:'+colLetter(ci)+last+')',result:sumOf(rows,ci)};
+            else if(c.sum) cell.value={formula:'SUM('+colLetter(ci)+(H+1)+':'+colLetter(ci)+last+')',result:sumOf(rows,ci)};
             else if(o.totalVals&&o.totalVals[ci]!==undefined&&o.totalVals[ci]!==null) cell.value=o.totalVals[ci];
             if(c.fmt) cell.numFmt=c.fmt;
             cell.font={name:'Calibri',size:11,bold:true,color:{argb:XINK}};cell.fill=xFill(XSOFT);
@@ -3482,7 +3548,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
           });
           if(o.totalStyle) o.totalStyle(tr);
         }
-        ws.autoFilter={from:{row:5,column:1},to:{row:last,column:n}};
+        ws.autoFilter={from:{row:H,column:1},to:{row:last,column:n}};
       }
       var nr=last+(rows.length&&o.totals?1:0)+2;
       (o.notes||[]).forEach(function(t,i){
@@ -3506,6 +3572,45 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         c.fill=xFill(st==='over'?'FFFDE7E5':st==='slight'?'FFFFF1D6':XSOFT);
       };
     }
+    // Khối tổng hợp kỳ báo cáo (đặt phía trên bảng)
+    var SIx=summaryItems(P);
+    function preBlock(tableTitle){
+      return {rows:11,draw:function(ws,r0,n){
+        var GREY='FFEAF1EC';
+        function cellsStyle(r,c1,c2,font,fill,al,border){
+          for(var c=c1;c<=c2;c++){var cl=ws.getCell(r,c);cl.font=font;if(fill) cl.fill=xFill(fill);cl.alignment=al;if(border) cl.border=border;}
+        }
+        var bd={top:{style:'thin',color:{argb:XLINE}},bottom:{style:'thin',color:{argb:XLINE}},left:{style:'thin',color:{argb:XLINE}},right:{style:'thin',color:{argb:XLINE}}};
+        function put(r,c1,c2,val,font,fill,al,fmt){
+          ws.mergeCells(r,c1,r,c2);var cl=ws.getCell(r,c1);cl.value=val;if(fmt) cl.numFmt=fmt;
+          cellsStyle(r,c1,c2,font,fill,al,bd);
+        }
+        var vm={vertical:'middle',horizontal:'left',indent:1,wrapText:true}, vc={vertical:'middle',horizontal:'center'}, vr={vertical:'middle',horizontal:'right',indent:1};
+        ws.mergeCells(r0,1,r0,n);var t=ws.getCell(r0,1);t.value='TỔNG HỢP KỲ BÁO CÁO';t.font={name:'Calibri',size:14,bold:true,color:{argb:XG}};t.alignment={vertical:'middle',horizontal:'left'};ws.getRow(r0).height=26;
+        ws.getRow(r0+1).height=28;
+        put(r0+1,1,2,'Thời gian',{name:'Calibri',size:13,bold:true,color:{argb:XINK}},GREY,vm);
+        put(r0+1,3,8,SIx.P.label+' ('+SIx.P.range+')',{name:'Calibri',size:13,bold:true,color:{argb:XINK}},null,vm);
+        ws.getRow(r0+2).height=26;
+        put(r0+2,1,2,'So sánh với',{name:'Calibri',size:12,bold:true,color:{argb:XMUTED}},GREY,vm);
+        put(r0+2,3,8,SIx.PP.label+' ('+SIx.PP.range+')',{name:'Calibri',size:12,color:{argb:XMUTED}},null,vm);
+        ws.getRow(r0+3).height=28;
+        var hf={name:'Calibri',size:12,bold:true,color:{argb:'FFFFFFFF'}};
+        put(r0+3,1,2,'Hạng mục',hf,XG,vm);put(r0+3,3,4,'Kỳ này',hf,XG,vc);put(r0+3,5,6,'Kỳ trước',hf,XG,vc);put(r0+3,7,8,'Tăng / giảm so với kỳ trước',hf,XG,vc);
+        SIx.items.forEach(function(x,i){
+          var r=r0+4+i;ws.getRow(r).height=32;
+          var fl=i%2?XZEB:null, f={name:'Calibri',size:13,color:{argb:XINK}};
+          put(r,1,2,x.label,{name:'Calibri',size:13,bold:true,color:{argb:XINK}},fl,vm);
+          put(r,3,4,x.cur==null?'—':x.cur,{name:'Calibri',size:14,bold:true,color:{argb:XINK}},fl,vr,x.fmt);
+          put(r,5,6,x.prev==null?'—':x.prev,f,fl,vr,x.fmt);
+          var pc=x.pct, col=XMUTED, txt;
+          if(pc==null) txt='chưa có số liệu kỳ trước';
+          else{txt=pc/100;var up=pc>0.05,dn=pc<-0.05;col=x.bad?(up?'FFB3261E':dn?'FF138A42':XMUTED):XINK;}
+          put(r,7,8,txt,{name:'Calibri',size:13,bold:pc!=null,color:{argb:col}},fl,vc,'"▲ "0.0%;"▼ "0.0%;"= 0,0%"');
+        });
+        ws.getRow(r0+9).height=12;
+        ws.mergeCells(r0+10,1,r0+10,n);var tt=ws.getCell(r0+10,1);tt.value=tableTitle;tt.font={name:'Calibri',size:13,bold:true,color:{argb:XG}};tt.alignment={vertical:'middle',horizontal:'left'};ws.getRow(r0+10).height=24;
+      }};
+    }
     // 1. Tổng hợp
     var cols1=[
       {h:'Biển số xe',w:15,al:'left'},{h:'Tài xế',w:22,al:'left'},
@@ -3524,8 +3629,8 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     });
     var tv1=[];tv1[3]=T.nd;tv1[8]=hasFuel&&T.pct!=null?T.pct/100:null;tv1[9]=hasFuel?T.avg:null;
     var notes1=['Chênh lệch và mức trung bình chỉ tính các tháng của xe có đủ số km, định mức và lít thực tế. Ngưỡng cảnh báo vượt định mức: '+nf2.format(threshold)+'%.'];
-    if(!hasFuel) notes1.push('Số km, lít định mức và lít thực tế được nhập theo tháng nên báo cáo tuần để trống các cột đó. Chọn Tháng hoặc Năm để xem đầy đủ.');
-    if(want('sum')) sheet('Tổng hợp','Tổng hợp theo xe',cols1,rows1,{totals:true,totalVals:tv1,style:pctStyle(8),totalStyle:function(tr){var c=tr.getCell(9);if(T.pct!=null&&hasFuel){var st=statusOf(T.pct);c.font={name:'Calibri',size:11,bold:true,color:{argb:st==='over'?'FFB3261E':st==='slight'?'FF8A5A00':'FF138A42'}};}},notes:notes1});
+    if(!hasFuel) notes1.push('Số km, lít định mức và lít thực tế được nhập theo tháng nên báo cáo tuần/ngày tùy chọn để trống các cột đó. Chọn Tháng hoặc Năm để xem đầy đủ.');
+    if(want('sum')) sheet('Tổng hợp','Tổng hợp theo xe',cols1,rows1,{pre:preBlock('Chi tiết theo từng xe'),totals:true,totalVals:tv1,style:pctStyle(8),totalStyle:function(tr){var c=tr.getCell(9);if(T.pct!=null&&hasFuel){var st=statusOf(T.pct);c.font={name:'Calibri',size:11,bold:true,color:{argb:st==='over'?'FFB3261E':st==='slight'?'FF8A5A00':'FF138A42'}};}},notes:notes1});
     // 2. Định mức dầu
     if(hasFuel&&want('fuel')){
       var cols2=[{h:'Tháng',w:12,al:'left'},{h:'Biển số xe',w:15,al:'left'},{h:'Định mức (L/100km)',w:14,fmt:'0.0#'},{h:'Số km',w:12,fmt:L1,sum:true},{h:'Lít theo định mức',w:14,fmt:L1,sum:true},{h:'Lít thực tế',w:12,fmt:L1,sum:true},{h:'Chênh lệch (lít)',w:14,fmt:LF,sum:true},{h:'Chênh lệch (%)',w:13,fmt:PCT}];
@@ -3539,7 +3644,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
         });
       });
       var tv2=[];tv2[7]=T.pct!=null?T.pct/100:null;
-      sheet('Định mức dầu','Định mức dầu và lít thực tế',cols2,rows2,{totals:true,totalLabel:'Tổng',totalVals:tv2,style:pctStyle(7)});
+      sheet('Định mức dầu','Định mức dầu và lít thực tế',cols2,rows2,{pre:preBlock('Chi tiết định mức dầu theo tháng và từng xe'),totals:true,totalLabel:'Tổng',totalVals:tv2,style:pctStyle(7)});
     }
 
     // 7. Đối chiếu giữa các lần đổ dầu
@@ -3676,6 +3781,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     if(key==='iv'||key==='cmp'){var n0=new Date(nowNaive());return XL_NAME[key]+'-'+n0.getUTCFullYear()+'-'+p2(n0.getUTCMonth()+1)+'-'+p2(n0.getUTCDate())+'.xlsx';}
     var d=new Date(P.from),y=d.getUTCFullYear(),base=(XL_NAME[key]||'nhat-ky-doi-xe')+(sel?'-da-chon':'');
     if(P.type==='year') return base+'-nam-'+y+'.xlsx';
+    if(P.type==='range') return base+'-tu-'+dmyFull(P.from).replace(/\//g,'-')+'-den-'+dmyFull(P.to-864e5).replace(/\//g,'-')+'.xlsx';
     if(P.type==='week'){var iw=isoWeekOf(P.from);return base+'-tuan-'+iw.y+'-'+p2(iw.w)+'.xlsx';}
     return base+'-thang-'+y+'-'+p2(d.getUTCMonth()+1)+'.xlsx';
   }
