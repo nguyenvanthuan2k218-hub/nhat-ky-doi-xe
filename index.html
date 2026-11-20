@@ -289,7 +289,7 @@ html:not(.role-quanly):not(.role-totruong) .only-q{display:none!important}
 html:not(.role-admin) .only-admin,html.role-taixe .tripkm{display:none!important}
 .tripkm{font-size:13px;color:var(--muted);font-weight:600}
 .kmcell{width:88px;border:1px solid var(--line-strong);border-radius:6px;background:var(--field);color:var(--ink);font-family:var(--f-mono);font-size:14px;padding:4px 6px;text-align:right}
-html:not(.role-quanly) [data-del],html:not(.role-quanly) [data-mdel],html:not(.role-quanly) [data-rdel],html:not(.role-quanly) #manage,html:not(.role-quanly) #fillprev{display:none!important}
+html:not(.role-quanly) [data-del],html:not(.role-quanly) [data-mdel],html:not(.role-quanly) [data-rdel],html:not(.role-quanly) [data-redit],html:not(.role-quanly) #manage,html:not(.role-quanly) #fillprev{display:none!important}
 html.role-ketoan .wform{display:none!important}
 html.role-taixe .adsun,html.role-taixe #t-sum,html.role-taixe [data-go=sum]{display:none!important}
 html.role-taixe #tab-fuel>section:not(.ledger),html.role-taixe #tab-fuel>details,html.role-taixe #tab-fuel>.formula,html.role-taixe .veh-res,html.role-taixe .f-rate,html.role-taixe .f-actual{display:none!important}
@@ -2490,7 +2490,7 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     $('rf-body').innerHTML=list.length?list.map(function(x){
       var asking=refuelConfirm===x.id;
       return '<tr><td class="sel-col"><input type="checkbox" data-rsel="'+esc(x.id)+'"'+(rfSel.has(x.id)?' checked':'')+' aria-label="Chọn lần đổ này để xuất báo cáo"></td><td class="num">'+dmyFull(x.date)+'</td><td><span class="plate-sm">'+esc(fmtPlate(x.plate))+'</span></td><td>'+(x.by?esc(x.by):'—')+'</td><td class="num">'+nf1.format(x.liters)+' lít</td><td class="num">'+(x.cost!=null?moneyTxt(x.cost):'—')+'</td><td class="col-media">'+mediaCell(x)+'</td>'+
-        '<td><button class="mbtn" type="button" data-rdel="'+esc(x.id)+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
+        '<td style="white-space:nowrap"><button class="mbtn" type="button" data-redit="'+esc(x.id)+'">Sửa</button> &nbsp; <button class="mbtn" type="button" data-rdel="'+esc(x.id)+'">'+(asking?'Bấm lần nữa để xóa':'Xóa')+'</button></td></tr>';
     }).join(''):'<tr><td class="empty" colspan="8">Chưa có lần đổ dầu nào trong '+mLabel(month).toLowerCase()+'. Ghi lần đầu ở phía trên.</td></tr>';
     $('rf-sum-title').textContent='Tổng theo xe '+mLabel(month).toLowerCase();
     var tl=0,tc=0,tn=0,tAnyC=false;
@@ -2892,7 +2892,61 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
     openMedia(b.getAttribute('data-rid'),Number(b.getAttribute('data-mi')));
   });
   $('rf-filter').addEventListener('change',renderRefuel);
+  function toDateIn(ms){var d=new Date(ms);return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());}
+  function editRefuel(id){
+    if(!can('edit')) return;
+    var x=refuel[id]; if(!x) return;
+    var old=document.getElementById('rf-edit-modal'); if(old) old.remove();
+    var m=document.createElement('div'); m.id='rf-edit-modal';
+    m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';
+    var opts=vehicles.map(function(v){return '<option value="'+esc(v.id)+'"'+(v.id===x.plate?' selected':'')+'>'+esc(fmtPlate(v.id))+'</option>';}).join('');
+    if(!vehicles.some(function(v){return v.id===x.plate;})) opts='<option value="'+esc(x.plate)+'" selected>'+esc(fmtPlate(x.plate))+'</option>'+opts;
+    m.innerHTML='<form class="panel tform" id="rfe-form" autocomplete="off" style="background:var(--surface);max-width:460px;width:100%;margin:auto">'+
+      '<h2 style="grid-column:1/-1;margin:0 0 4px">Sửa lần đổ dầu</h2>'+
+      '<label class="fld"><span class="lab">Ngày đổ</span><input class="txt" id="rfe-date" type="date" value="'+toDateIn(x.date)+'"></label>'+
+      '<label class="fld"><span class="lab">Biển số xe</span><select class="txt" id="rfe-plate">'+opts+'</select></label>'+
+      '<label class="fld"><span class="lab">Người đổ dầu</span><span class="inp name"><input id="rfe-by" type="text" maxlength="60" value="'+esc(x.by||'')+'"></span></label>'+
+      '<label class="fld"><span class="lab">Số lít</span><span class="inp"><input id="rfe-liters" type="text" inputmode="decimal" value="'+esc(String(x.liters).replace('.',','))+'"><em>lít</em></span></label>'+
+      '<label class="fld"><span class="lab">Thành tiền</span><span class="inp"><input id="rfe-cost" type="text" inputmode="numeric" value="'+(x.cost!=null?esc(nf0.format(x.cost)):'')+'"><em>đồng</em></span></label>'+
+      '<p class="m-err" id="rfe-err" role="alert" hidden style="grid-column:1/-1"></p>'+
+      '<div class="tform-act"><button class="btn" type="button" id="rfe-cancel">Hủy</button><button class="btn primary" type="submit">Lưu thay đổi</button></div></form>';
+    document.body.appendChild(m);
+    function close(){m.remove();}
+    function err(t){var e=document.getElementById('rfe-err');e.textContent=t;e.hidden=!t;}
+    document.getElementById('rfe-cancel').addEventListener('click',close);
+    m.addEventListener('mousedown',function(ev){if(ev.target===m) close();});
+    document.getElementById('rfe-form').addEventListener('submit',function(ev){
+      ev.preventDefault();
+      var li=parseNum(document.getElementById('rfe-liters').value), co=parseNum(document.getElementById('rfe-cost').value);
+      var dv=document.getElementById('rfe-date').value;
+      if(li.empty||li.bad||!(li.v>0)) return err('Số lít chưa đúng. Nhập số lớn hơn 0, ví dụ 45,5.');
+      if(co.bad) return err('Thành tiền chưa đúng. Chỉ nhập số, ví dụ 1.000.000.');
+      if(!dv) return err('Chọn ngày đổ.');
+      var pa=dv.split('-').map(Number), dms=Date.UTC(pa[0],pa[1]-1,pa[2]);
+      var nx=Object.assign({},x,{plate:document.getElementById('rfe-plate').value,liters:li.v,cost:co.empty?null:co.v,by:document.getElementById('rfe-by').value.trim().slice(0,60),date:dms});
+      close();
+      refuel[nx.id]=nx;refuelPending.set(nx.id,nx);
+      bigToast('saving','Đang ghi vào sổ đổ dầu…','Đang lưu chỉnh sửa');
+      renderRefuel();renderHomeIf();
+      writeRefuelEdit(nx,x);
+    });
+    setTimeout(function(){var f=document.getElementById('rfe-liters');if(f) f.focus();},50);
+  }
+  async function writeRefuelEdit(nx,old){
+    try{
+      await ready;
+      setStatus('saving');
+      if(mode==='db') await db.doc('refuel/'+nx.id).set({plate:nx.plate,liters:nx.liters,cost:nx.cost,by:nx.by||'',media:nx.media,date:nx.date,at:nx.at});
+      else persistLocal();
+      if(refuelPending.get(nx.id)===nx) refuelPending.delete(nx.id);
+      setStatus('saved');
+    }catch(e){
+      if(refuelPending.get(nx.id)===nx) refuelPending.delete(nx.id);
+      refuel[old.id]=old;renderRefuel();renderHomeIf();setStatus('error',e);
+    }
+  }
   $('rf-body').addEventListener('click',function(e){
+    var eb=e.target.closest&&e.target.closest('[data-redit]'); if(eb){editRefuel(eb.getAttribute('data-redit'));return;}
     var b=e.target.closest&&e.target.closest('[data-rdel]'); if(!b) return;
     var id=b.getAttribute('data-rdel');
     if(refuelConfirm!==id){
