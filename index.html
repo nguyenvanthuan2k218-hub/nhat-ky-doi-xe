@@ -2924,11 +2924,21 @@ html:not(.role-quanly):not(.role-ketoan) #export,html:not(.role-quanly):not(.rol
       if(!dv) return err('Chọn ngày đổ.');
       var pa=dv.split('-').map(Number), dms=Date.UTC(pa[0],pa[1]-1,pa[2]);
       var nx=Object.assign({},x,{plate:document.getElementById('rfe-plate').value,liters:li.v,cost:co.empty?null:co.v,by:document.getElementById('rfe-by').value.trim().slice(0,60),date:dms});
-      close();
-      refuel[nx.id]=nx;refuelPending.set(nx.id,nx);
-      bigToast('saving','Đang ghi vào sổ đổ dầu…','Đang lưu chỉnh sửa');
-      renderRefuel();renderHomeIf();
-      writeRefuelEdit(nx,x);
+      var btn=document.querySelector('#rfe-form button[type=submit]'); btn.disabled=true; btn.textContent='Đang lưu…'; err('');
+      (async function(){
+        try{
+          await ready;
+          setStatus('saving');
+          if(mode==='db') await db.doc('refuel/'+nx.id).set({plate:nx.plate,liters:nx.liters,cost:nx.cost,by:nx.by||'',media:nx.media,date:nx.date,at:nx.at});
+          else persistLocal();
+          refuel[nx.id]=nx;
+          close();renderRefuel();renderHomeIf();setStatus('saved');
+        }catch(e2){
+          btn.disabled=false;btn.textContent='Lưu thay đổi';
+          setStatus('error',e2);
+          err('Chưa lưu được. Lý do: '+jobErrTxt(e2)+'. Hãy chụp màn hình này gửi cho người hỗ trợ.');
+        }
+      })();
     });
     setTimeout(function(){var f=document.getElementById('rfe-liters');if(f) f.focus();},50);
   }
